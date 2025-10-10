@@ -1,0 +1,62 @@
+# Multi-stage production build for AI Styler Backend
+
+# Build stage
+FROM golang:1.21-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache git ca-certificates tzdata make gcc musl-dev
+
+# Set working directory
+WORKDIR /app
+
+# Copy go mod files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the application with optimizations
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -a -installsuffix cgo \
+    -ldflags='-w -s -extldflags "-static"' \
+    -o ai-styler main.go
+
+# Production stage
+FROM alpine:latest
+
+# Install runtime dependencies
+RUN apk --no-cache add ca-certificates tzdata curl
+
+# Create non-root user
+RUN addgroup -g 1001 -S styler && \
+    adduser -u 1001 -S styler -G styler
+
+# Set working directory
+WORKDIR /app
+
+# Copy binary from builder stage
+COPY --from=builder /app/ai-styler .
+
+# Copy configuration files
+COPY --from=builder /app/.env.example .env
+
+# Create necessary directories with proper permissions
+RUN mkdir -p uploads logs backups && \
+    chown -R styler:styler /app && \
+    chmod -R 755 /app
+
+# Switch to non-root user
+USER styler
+
+# Expose port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/api/health || exit 1
+
+# Run the application
+CMD ["./ai-styler"]

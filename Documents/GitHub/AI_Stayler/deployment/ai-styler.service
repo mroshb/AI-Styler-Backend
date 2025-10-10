@@ -1,0 +1,47 @@
+# AI Styler Windows Service Configuration
+
+[Unit]
+Description=AI Styler API Service
+After=network.target
+
+[Service]
+Type=simple
+User=ai-styler
+Group=ai-styler
+WorkingDirectory=C:\inetpub\wwwroot\ai-styler
+ExecStart=C:\inetpub\wwwroot\ai-styler\ai-styler.exe
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ai-styler
+
+# Environment variables
+Environment=DB_HOST=localhost
+Environment=DB_PORT=5432
+Environment=DB_USER=styler_user
+Environment=DB_PASSWORD=styler_password
+Environment=DB_NAME=styler
+Environment=DB_SSLMODE=disable
+Environment=REDIS_HOST=localhost
+Environment=REDIS_PORT=6379
+Environment=REDIS_PASSWORD=
+Environment=REDIS_DB=0
+Environment=JWT_SECRET=your-production-secret-key
+Environment=ENVIRONMENT=production
+Environment=LOG_LEVEL=info
+Environment=HEALTH_ENABLED=true
+Environment=GIN_MODE=release
+Environment=HTTP_ADDR=:8080
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=C:\inetpub\wwwroot\ai-styler\uploads
+ReadWritePaths=C:\inetpub\wwwroot\ai-styler\logs
+
+[Install]
+WantedBy=multi-user.target

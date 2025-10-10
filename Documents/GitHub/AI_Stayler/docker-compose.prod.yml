@@ -1,0 +1,346 @@
+# Production Docker Compose Configuration
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai-styler-postgres-prod
+    environment:
+      POSTGRES_DB: styler
+      POSTGRES_USER: styler_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/migrations:/docker-entrypoint-initdb.d
+      - ./backups:/backups
+    networks:
+      - ai-styler-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U styler_user -d styler"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: ai-styler-redis-prod
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - ai-styler-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: redis-server /usr/local/etc/redis/redis.conf
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  # AI Styler Backend Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: ai-styler-app-prod
+    ports:
+      - "8080:8080"
+    environment:
+      # Database Configuration
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=styler_user
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=styler
+      - DB_SSLMODE=require
+      - DB_MAX_OPEN_CONNS=100
+      - DB_MAX_IDLE_CONNS=10
+      - DB_CONN_MAX_LIFETIME=5m
+      - DB_CONN_MAX_IDLE_TIME=1m
+      
+      # Redis Configuration
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_DB=0
+      - REDIS_POOL_SIZE=100
+      - REDIS_MIN_IDLE_CONNS=10
+      - REDIS_MAX_RETRIES=3
+      - REDIS_DIAL_TIMEOUT=5s
+      - REDIS_READ_TIMEOUT=3s
+      - REDIS_WRITE_TIMEOUT=3s
+      - REDIS_POOL_TIMEOUT=4s
+      
+      # Server Configuration
+      - HTTP_ADDR=:8080
+      - GIN_MODE=release
+      
+      # JWT Configuration
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ACCESS_TTL=15m
+      - JWT_REFRESH_TTL=720h
+      - JWT_SECRET_LENGTH=64
+      
+      # Security Configuration
+      - BCRYPT_COST=12
+      - ARGON2_MEMORY=65536
+      - ARGON2_ITERATIONS=3
+      - ARGON2_PARALLELISM=2
+      - ARGON2_SALT_LENGTH=16
+      - ARGON2_KEY_LENGTH=32
+      - SESSION_TIMEOUT=24h
+      - MAX_LOGIN_ATTEMPTS=5
+      - LOCKOUT_DURATION=15m
+      
+      # Storage Configuration
+      - STORAGE_PATH=/app/uploads
+      - UPLOAD_MAX_SIZE=50MB
+      - SIGNED_URL_TTL=1h
+      
+      # Gemini AI Configuration
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_BASE_URL=https://generativelanguage.googleapis.com
+      - GEMINI_MODEL=gemini-pro-vision
+      - GEMINI_TIMEOUT=300
+      - GEMINI_MAX_RETRIES=3
+      
+      # Monitoring Configuration
+      - ENVIRONMENT=production
+      - LOG_LEVEL=info
+      - HEALTH_ENABLED=true
+      - METRICS_ENABLED=true
+      - TRACING_ENABLED=true
+      - PROFILING_ENABLED=false
+      - LOG_RETENTION_DAYS=30
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - SENTRY_DSN=${SENTRY_DSN}
+      
+      # Rate Limiting Configuration
+      - RATE_LIMIT_OTP_PER_PHONE=3
+      - RATE_LIMIT_OTP_PER_IP=100
+      - RATE_LIMIT_LOGIN_PER_PHONE=5
+      - RATE_LIMIT_LOGIN_PER_IP=10
+      - RATE_LIMIT_WINDOW=1h
+      
+      # SMS Configuration
+      - SMS_PROVIDER=sms_ir
+      - SMS_API_KEY=${SMS_API_KEY}
+      - SMS_TEMPLATE_ID=100000
+      
+      # Payment Configuration
+      - ZARINPAL_MERCHANT_ID=${ZARINPAL_MERCHANT_ID}
+      - ZARINPAL_SANDBOX=false
+      - ZARINPAL_CALLBACK_URL=https://api.aistyler.com/api/v1/payments/callback
+      
+      # Alert Thresholds
+      - ALERT_ERROR_RATE=0.05
+      - ALERT_RESPONSE_TIME=2.0
+      - ALERT_CPU_USAGE=0.80
+      - ALERT_MEMORY_USAGE=0.85
+      - ALERT_DISK_USAGE=0.90
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+      - ./backups:/app/backups
+    networks:
+      - ai-styler-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: ai-styler-nginx-prod
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - ./logs/nginx:/var/log/nginx
+    networks:
+      - ai-styler-network
+    depends_on:
+      - app
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+
+  # Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ai-styler-prometheus-prod
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.prod.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - ai-styler-network
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+
+  # Grafana Dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ai-styler-grafana-prod
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - ai-styler-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.25'
+        reservations:
+          memory: 256M
+          cpus: '0.1'
+
+  # Log Aggregation
+  loki:
+    image: grafana/loki:latest
+    container_name: ai-styler-loki-prod
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/loki.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    networks:
+      - ai-styler-network
+    restart: unless-stopped
+    command: -config.file=/etc/loki/local-config.yaml
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.25'
+        reservations:
+          memory: 256M
+          cpus: '0.1'
+
+  # Log Shipping
+  promtail:
+    image: grafana/promtail:latest
+    container_name: ai-styler-promtail-prod
+    volumes:
+      - ./logs:/var/log/app:ro
+      - ./monitoring/promtail.yml:/etc/promtail/config.yml:ro
+    networks:
+      - ai-styler-network
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/config.yml
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.1'
+        reservations:
+          memory: 128M
+          cpus: '0.05'
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  loki_data:
+    driver: local
+
+networks:
+  ai-styler-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+    driver_opts:
+      com.docker.network.bridge.name: ai-styler-br
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.enable_ip_masquerade: "true"
+      com.docker.network.bridge.host_binding_ipv4: "0.0.0.0"

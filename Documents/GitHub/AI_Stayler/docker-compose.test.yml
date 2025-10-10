@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # AI Styler API for Testing
+  ai-styler-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8080"
+    environment:
+      - DB_HOST=postgres-test
+      - DB_PORT=5432
+      - DB_USER=styler_test_user
+      - DB_PASSWORD=styler_test_password
+      - DB_NAME=styler_test
+      - DB_SSLMODE=disable
+      - REDIS_HOST=redis-test
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - REDIS_DB=0
+      - JWT_SECRET=test-secret-key
+      - ENVIRONMENT=test
+      - LOG_LEVEL=debug
+      - HEALTH_ENABLED=true
+      - GIN_MODE=test
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/app/uploads
+    networks:
+      - test-network
+
+  # PostgreSQL Database for Testing
+  postgres-test:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=styler_test_user
+      - POSTGRES_PASSWORD=styler_test_password
+      - POSTGRES_DB=styler_test
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+      - ./db/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U styler_test_user -d styler_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-network
+
+  # Redis Cache for Testing
+  redis-test:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_test_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-network
+
+volumes:
+  postgres_test_data:
+  redis_test_data:
+
+networks:
+  test-network:
+    driver: bridge
