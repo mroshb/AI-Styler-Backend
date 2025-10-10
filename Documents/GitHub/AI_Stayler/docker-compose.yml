@@ -8,7 +8,7 @@ services:
     environment:
       POSTGRES_DB: styler
       POSTGRES_USER: styler_user
-      POSTGRES_PASSWORD: styler_password
+      POSTGRES_PASSWORD: eqabLHg67ChnEoB3fWctMd4I
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
     ports:
       - "5432:5432"
@@ -54,14 +54,14 @@ services:
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_USER=styler_user
-      - DB_PASSWORD=styler_password
+      - DB_PASSWORD=eqabLHg67ChnEoB3fWctMd4I
       - DB_NAME=styler
       - DB_SSLMODE=disable
       
       # Redis Configuration
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - REDIS_PASSWORD=
+      - REDIS_PASSWORD=DeQfRgEWlC364yIhoxwJ
       - REDIS_DB=0
       
       # Server Configuration
@@ -69,7 +69,7 @@ services:
       - GIN_MODE=release
       
       # JWT Configuration
-      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - JWT_SECRET=JCLRZh32YXP1vQ8swMaOEVTI9kuyq56jDzgfKHAdeo0lWGmxpn4bSBiUFN7ctr
       - JWT_ACCESS_TTL=15m
       - JWT_REFRESH_TTL=720h
       
@@ -79,9 +79,9 @@ services:
       - SIGNED_URL_TTL=1h
       
       # Gemini AI Configuration
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - GEMINI_BASE_URL=https://generativelanguage.googleapis.com
-      - GEMINI_MODEL=gemini-pro-vision
+      - GEMINI_API_KEY=sk-1JGKhYzLv4T3E8im3zgP67amtBo3YLQxt3yYyxWhcYo3r3Ah
+      - GEMINI_BASE_URL=https://api.gapgpt.app/v1/models/gemini-2.5-flash-image-preview:generateContent
+      - GEMINI_MODEL=gemini-2.5-flash-image-preview
       - GEMINI_TIMEOUT=300
       - GEMINI_MAX_RETRIES=3
       
