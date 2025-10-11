@@ -21,6 +21,15 @@ CREATE TABLE IF NOT EXISTS vendors (
     UNIQUE(user_id)
 );
 
+-- Add business_name column if it doesn't exist
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'vendors' AND column_name = 'business_name') THEN
+        ALTER TABLE vendors ADD COLUMN business_name TEXT NOT NULL DEFAULT 'Unknown Business';
+    END IF;
+END $$;
+
 -- Create indexes for vendors table
 CREATE INDEX IF NOT EXISTS idx_vendors_user_id ON vendors(user_id);
 CREATE INDEX IF NOT EXISTS idx_vendors_business_name ON vendors(business_name);
