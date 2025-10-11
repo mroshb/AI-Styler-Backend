@@ -42,9 +42,10 @@ COPY --from=builder /app/ai-styler .
 # Copy configuration files
 COPY --from=builder /app/.env.example .env
 
-# Create necessary directories
-RUN mkdir -p uploads logs && \
-    chown -R styler:styler /app
+# Create necessary directories with proper structure
+RUN mkdir -p uploads/images/user uploads/images/vendor logs && \
+    chown -R styler:styler /app && \
+    chmod -R 755 /app/uploads /app/logs
 
 # Switch to non-root user
 USER styler
