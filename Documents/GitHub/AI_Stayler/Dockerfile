@@ -1,7 +1,7 @@
 # Multi-stage build for AI Styler Backend
 
 # Build stage
-FROM golang:1.21 AS builder
+FROM golang:1.24 AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y git ca-certificates tzdata && rm -rf /var/lib/apt/lists/*
