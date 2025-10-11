@@ -6,8 +6,8 @@ FROM golang:1.24 AS builder
 # Install build dependencies
 RUN apt-get update && apt-get install -y git ca-certificates tzdata && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
-WORKDIR /app
+# Set working directory to match module name
+WORKDIR /go/src/AI_Styler
 
 # Copy go mod files
 COPY go.mod go.sum ./
@@ -18,8 +18,10 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o ai-styler .
+# Set Go module mode and build the application
+ENV GO111MODULE=on
+RUN go mod tidy
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=readonly -a -installsuffix cgo -o ai-styler .
 
 # Production stage
 FROM debian:bookworm-slim
@@ -35,10 +37,10 @@ RUN groupadd -g 1001 styler && \
 WORKDIR /app
 
 # Copy binary from builder stage
-COPY --from=builder /app/ai-styler .
+COPY --from=builder /go/src/AI_Styler/ai-styler .
 
 # Copy configuration files
-COPY --from=builder /app/.env.example .env
+COPY --from=builder /go/src/AI_Styler/.env.example .env
 
 # Create necessary directories
 RUN mkdir -p uploads logs && \
