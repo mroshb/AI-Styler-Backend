@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"AI_Styler/internal/common"
+	"ai-styler/internal/common"
 )
 
 func TestHandler_GetProfile(t *testing.T) {

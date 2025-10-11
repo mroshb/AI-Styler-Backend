@@ -1,8 +1,8 @@
 package route
 
 import (
-	"AI_Styler/internal/config"
-	"AI_Styler/internal/crosscutting"
+	"ai-styler/internal/config"
+	"ai-styler/internal/crosscutting"
 	"context"
 	"time"
 

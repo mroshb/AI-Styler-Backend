@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"AI_Styler/internal/auth"
-	"AI_Styler/internal/common"
-	"AI_Styler/internal/config"
-	"AI_Styler/internal/monitoring"
-	"AI_Styler/internal/security"
+	"ai-styler/internal/auth"
+	"ai-styler/internal/common"
+	"ai-styler/internal/config"
+	"ai-styler/internal/monitoring"
+	"ai-styler/internal/security"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/assert"
@@ -35,7 +35,7 @@ func SetupTestSuite(t *testing.T) *TestSuite {
 	require.NoError(t, err)
 
 	// Override with test settings
-	cfg.Database.Name = "ai_styler_test"
+	cfg.Database.Name = "ai-styler_test"
 	cfg.Redis.DB = 1 // Use different Redis DB for tests
 	cfg.Monitoring.Environment = "testing"
 

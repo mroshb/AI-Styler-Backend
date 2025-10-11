@@ -3,7 +3,7 @@ package user
 import (
 	"testing"
 
-	"AI_Styler/internal/common"
+	"ai-styler/internal/common"
 )
 
 func TestUserService_Integration(t *testing.T) {

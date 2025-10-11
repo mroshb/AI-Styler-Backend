@@ -3,7 +3,7 @@ package auth
 import (
 	"net/http"
 
-	"AI_Styler/internal/sms"
+	"ai-styler/internal/sms"
 )
 
 // ProvideStdMux mounts handlers on a standard library ServeMux.

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"AI_Styler/internal/common"
-	"AI_Styler/internal/logging"
+	"ai-styler/internal/common"
+	"ai-styler/internal/logging"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/go-redis/redis/v8"

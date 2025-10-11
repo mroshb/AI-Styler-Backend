@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	"AI_Styler/internal/logging"
-	"AI_Styler/internal/monitoring"
-	"AI_Styler/internal/security"
+	"ai-styler/internal/logging"
+	"ai-styler/internal/monitoring"
+	"ai-styler/internal/security"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"

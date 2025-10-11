@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"AI_Styler/internal/common"
+	"ai-styler/internal/common"
 )
 
 // TelegramConfig represents Telegram configuration

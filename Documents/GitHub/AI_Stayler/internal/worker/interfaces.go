@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"AI_Styler/internal/conversion"
-	"AI_Styler/internal/image"
+	"ai-styler/internal/conversion"
+	"ai-styler/internal/image"
 )
 
 // JobQueue defines the interface for job queue operations

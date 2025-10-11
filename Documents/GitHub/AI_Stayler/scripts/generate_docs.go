@@ -1,7 +1,7 @@
 package main
 
 import (
-	"AI_Styler/internal/docs"
+	"ai-styler/internal/docs"
 	"fmt"
 	"log"
 	"os"

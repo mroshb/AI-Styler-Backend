@@ -13,12 +13,12 @@ import (
 	"testing"
 	"time"
 
-	"AI_Styler/internal/auth"
-	"AI_Styler/internal/common"
-	"AI_Styler/internal/config"
-	"AI_Styler/internal/logging"
-	"AI_Styler/internal/monitoring"
-	"AI_Styler/internal/sms"
+	"ai-styler/internal/auth"
+	"ai-styler/internal/common"
+	"ai-styler/internal/config"
+	"ai-styler/internal/logging"
+	"ai-styler/internal/monitoring"
+	"ai-styler/internal/sms"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"

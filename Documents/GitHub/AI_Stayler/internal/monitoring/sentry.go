@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"time"
 
-	"AI_Styler/internal/common"
+	"ai-styler/internal/common"
 
 	"github.com/getsentry/sentry-go"
 )

@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"AI_Styler/internal/security"
-	"AI_Styler/internal/sms"
+	"ai-styler/internal/security"
+	"ai-styler/internal/sms"
 )
 
 // Mock implementations for testing

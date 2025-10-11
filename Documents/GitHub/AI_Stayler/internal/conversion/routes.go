@@ -3,7 +3,7 @@ package conversion
 import (
 	"net/http"
 
-	"AI_Styler/internal/common"
+	"ai-styler/internal/common"
 
 	"github.com/gin-gonic/gin"
 )

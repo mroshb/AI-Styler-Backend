@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"AI_Styler/internal/conversion"
-	"AI_Styler/internal/image"
+	"ai-styler/internal/conversion"
+	"ai-styler/internal/image"
 )
 
 // Service implements the WorkerService interface

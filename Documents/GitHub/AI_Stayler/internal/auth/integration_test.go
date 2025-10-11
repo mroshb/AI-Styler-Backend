@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"AI_Styler/internal/sms"
+	"ai-styler/internal/sms"
 )
 
 // Integration test for complete auth flow

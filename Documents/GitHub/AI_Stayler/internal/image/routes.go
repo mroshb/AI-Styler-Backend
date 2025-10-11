@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"AI_Styler/internal/common"
+	"ai-styler/internal/common"
 
 	"github.com/gin-gonic/gin"
 )

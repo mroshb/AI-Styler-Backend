@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"AI_Styler/internal/common"
-	"AI_Styler/internal/logging"
+	"ai-styler/internal/common"
+	"ai-styler/internal/logging"
 )
 
 // Define custom types for context keys to avoid SA1029 warnings

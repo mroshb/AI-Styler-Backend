@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"AI_Styler/internal/logging"
-	"AI_Styler/internal/monitoring"
+	"ai-styler/internal/logging"
+	"ai-styler/internal/monitoring"
 
 	"github.com/gin-gonic/gin"
 )

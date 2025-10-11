@@ -1,4 +1,4 @@
-module AI_Styler
+module ai-styler
 
 go 1.24.4
 

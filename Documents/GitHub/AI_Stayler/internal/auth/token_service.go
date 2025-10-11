@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"AI_Styler/internal/security"
+	"ai-styler/internal/security"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"

@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"AI_Styler/internal/common"
-	"AI_Styler/internal/config"
-	"AI_Styler/internal/security"
-	"AI_Styler/internal/sms"
+	"ai-styler/internal/common"
+	"ai-styler/internal/config"
+	"ai-styler/internal/security"
+	"ai-styler/internal/sms"
 )
 
 type Handler struct {

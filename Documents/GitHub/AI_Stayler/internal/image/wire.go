@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"time"
 
-	"AI_Styler/internal/storage"
+	"ai-styler/internal/storage"
 )
 
 // WireImageService creates an image service with all dependencies

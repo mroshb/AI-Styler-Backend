@@ -4,10 +4,10 @@ import (
 	"database/sql"
 	"time"
 
-	"AI_Styler/internal/conversion"
-	"AI_Styler/internal/image"
-	"AI_Styler/internal/notification"
-	"AI_Styler/internal/storage"
+	"ai-styler/internal/conversion"
+	"ai-styler/internal/image"
+	"ai-styler/internal/notification"
+	"ai-styler/internal/storage"
 )
 
 // WireWorkerService creates a worker service with all dependencies

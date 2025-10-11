@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"AI_Styler/internal/config"
+	"ai-styler/internal/config"
 
 	_ "github.com/lib/pq"
 )

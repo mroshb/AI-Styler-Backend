@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"AI_Styler/internal/common"
+	"ai-styler/internal/common"
 )
 
 // Handler provides HTTP handlers for image operations
