@@ -25,7 +25,7 @@ import (
 	"ai-styler/internal/sms"
 	"ai-styler/internal/storage"
 	"ai-styler/internal/user"
-	"ai-styler/internal/vendor"
+	"ai-styler/internal/vendors"
 	"ai-styler/internal/worker"
 
 	"github.com/gin-gonic/gin"
