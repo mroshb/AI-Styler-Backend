@@ -39,8 +39,8 @@ WORKDIR /app
 # Copy binary from builder stage
 COPY --from=builder /app/ai-styler .
 
-# Copy configuration files
-COPY --from=builder /app/.env.example .env
+# Copy configuration files (create basic .env if needed)
+RUN echo "# Basic environment configuration" > .env
 
 # Create necessary directories with proper structure
 RUN mkdir -p uploads/images/user uploads/images/vendor logs && \
