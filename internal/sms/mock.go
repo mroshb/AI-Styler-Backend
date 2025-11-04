@@ -14,3 +14,7 @@ func (m *MockSMSProvider) Send(code string, phone string) error {
 	log.Printf("MOCK SMS: In production, this would send real SMS via SMS.ir API")
 	return nil
 }
+
+func (m *MockSMSProvider) IsMock() bool {
+	return true
+}

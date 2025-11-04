@@ -31,14 +31,10 @@ CREATE TABLE IF NOT EXISTS storage_files (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     last_accessed TIMESTAMPTZ,
-    access_count INTEGER NOT NULL DEFAULT 0,
-    
-    -- Ensure owner_id references correct table based on owner_type
-    CONSTRAINT chk_storage_owner_user CHECK (
-        (owner_type = 'user' AND owner_id IN (SELECT id FROM users)) OR
-        (owner_type = 'vendor' AND owner_id IN (SELECT id FROM vendors))
-    )
+    access_count INTEGER NOT NULL DEFAULT 0
 );
+-- Note: PostgreSQL doesn't allow subqueries in CHECK constraints
+-- We'll use foreign keys or triggers to validate owner_id references
 
 -- storage_access_logs table - Track all file access
 CREATE TABLE IF NOT EXISTS storage_access_logs (
@@ -277,55 +273,90 @@ RETURNS TRIGGER AS $$
 DECLARE
     quota_user_id UUID;
     quota_vendor_id UUID;
+    owner_type_val TEXT;
+    owner_id_val UUID;
+    file_size_val BIGINT;
 BEGIN
+    -- Get values from NEW (INSERT/UPDATE) or OLD (DELETE)
+    IF TG_OP = 'DELETE' THEN
+        owner_type_val := OLD.owner_type;
+        owner_id_val := OLD.owner_id;
+        file_size_val := OLD.file_size;
+    ELSE
+        owner_type_val := NEW.owner_type;
+        owner_id_val := NEW.owner_id;
+        file_size_val := NEW.file_size;
+    END IF;
+    
     -- Determine quota tracking entity
-    IF NEW.owner_type = 'user' THEN
-        quota_user_id := NEW.owner_id;
+    IF owner_type_val = 'user' THEN
+        quota_user_id := owner_id_val;
         quota_vendor_id := NULL;
-    ELSIF NEW.owner_type = 'vendor' THEN
+    ELSIF owner_type_val = 'vendor' THEN
         quota_user_id := NULL;
-        quota_vendor_id := NEW.owner_id;
+        quota_vendor_id := owner_id_val;
+    ELSE
+        RETURN COALESCE(NEW, OLD);
     END IF;
     
     -- Update quota counts
     IF TG_OP = 'INSERT' THEN
-        INSERT INTO storage_quotas (
-            user_id, vendor_id, quota_type,
-            current_file_count, current_total_size
-        )
-        VALUES (
-            quota_user_id, quota_vendor_id, 'total',
-            1, NEW.file_size
-        )
-        ON CONFLICT (user_id, quota_type) 
-        DO UPDATE SET
-            current_file_count = storage_quotas.current_file_count + 1,
-            current_total_size = storage_quotas.current_total_size + NEW.file_size,
-            updated_at = NOW()
-        ON CONFLICT (vendor_id, quota_type)
-        DO UPDATE SET
-            current_file_count = storage_quotas.current_file_count + 1,
-            current_total_size = storage_quotas.current_total_size + NEW.file_size,
-            updated_at = NOW();
+        -- Insert or update quota
+        IF quota_user_id IS NOT NULL THEN
+            INSERT INTO storage_quotas (
+                user_id, vendor_id, quota_type,
+                current_file_count, current_total_size
+            )
+            VALUES (
+                quota_user_id, NULL, 'total',
+                1, file_size_val
+            )
+            ON CONFLICT (user_id, quota_type)
+            DO UPDATE SET
+                current_file_count = storage_quotas.current_file_count + 1,
+                current_total_size = storage_quotas.current_total_size + file_size_val,
+                updated_at = NOW();
+        ELSIF quota_vendor_id IS NOT NULL THEN
+            INSERT INTO storage_quotas (
+                user_id, vendor_id, quota_type,
+                current_file_count, current_total_size
+            )
+            VALUES (
+                NULL, quota_vendor_id, 'total',
+                1, file_size_val
+            )
+            ON CONFLICT (vendor_id, quota_type)
+            DO UPDATE SET
+                current_file_count = storage_quotas.current_file_count + 1,
+                current_total_size = storage_quotas.current_total_size + file_size_val,
+                updated_at = NOW();
+        END IF;
             
     ELSIF TG_OP = 'DELETE' THEN
         UPDATE storage_quotas 
         SET 
             current_file_count = GREATEST(0, current_file_count - 1),
-            current_total_size = GREATEST(0, current_total_size - OLD.file_size),
+            current_total_size = GREATEST(0, current_total_size - file_size_val),
             updated_at = NOW()
-        WHERE (user_id = quota_user_id AND quota_type = 'total') OR
-              (vendor_id = quota_vendor_id AND quota_type = 'total');
+        WHERE (quota_user_id IS NOT NULL AND user_id = quota_user_id AND quota_type = 'total') OR
+              (quota_vendor_id IS NOT NULL AND vendor_id = quota_vendor_id AND quota_type = 'total');
     END IF;
     
     RETURN COALESCE(NEW, OLD);
 END;
 $$ LANGUAGE plpgsql;
 
--- Trigger for quota updates
-CREATE TRIGGER trg_update_storage_quota
-AFTER INSERT OR DELETE ON storage_files
-FOR EACH ROW EXECUTE FUNCTION update_storage_quota();
+-- Trigger for quota updates (only if table exists)
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'storage_files') THEN
+        IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_update_storage_quota') THEN
+            CREATE TRIGGER trg_update_storage_quota
+            AFTER INSERT OR DELETE ON storage_files
+            FOR EACH ROW EXECUTE FUNCTION update_storage_quota();
+        END IF;
+    END IF;
+END $$;
 
 -- ============================================================================
 -- UTILITY FUNCTIONS

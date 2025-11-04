@@ -10,10 +10,11 @@ import (
 )
 
 type SMSIrProvider struct {
-	APIKey     string
-	TemplateID int
-	BaseURL    string
-	HTTPClient *http.Client
+	APIKey        string
+	TemplateID    int
+	ParameterName string
+	BaseURL       string
+	HTTPClient    *http.Client
 }
 
 type VerifySendModel struct {
@@ -37,10 +38,15 @@ type SMSIrResponse struct {
 }
 
 func NewSMSIrProvider(apiKey string, templateID int) *SMSIrProvider {
+	return NewSMSIrProviderWithParameter(apiKey, templateID, "Code")
+}
+
+func NewSMSIrProviderWithParameter(apiKey string, templateID int, parameterName string) *SMSIrProvider {
 	return &SMSIrProvider{
-		APIKey:     apiKey,
-		TemplateID: templateID,
-		BaseURL:    "https://api.sms.ir/v1/send/verify",
+		APIKey:        apiKey,
+		TemplateID:    templateID,
+		ParameterName: parameterName,
+		BaseURL:       "https://api.sms.ir/v1/send/verify",
 		HTTPClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -59,7 +65,7 @@ func (s *SMSIrProvider) Send(code string, phone string) error {
 		TemplateID: s.TemplateID,
 		Parameters: []VerifySendParameterModel{
 			{
-				Name:  "Code",
+				Name:  s.ParameterName,
 				Value: code,
 			},
 		},
@@ -114,4 +120,8 @@ func (s *SMSIrProvider) Send(code string, phone string) error {
 
 	fmt.Printf("SMS sent successfully! MessageID: %d, Cost: %.2f\n", smsResp.Data.MessageID, smsResp.Data.Cost)
 	return nil
+}
+
+func (s *SMSIrProvider) IsMock() bool {
+	return false
 }

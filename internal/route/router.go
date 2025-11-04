@@ -356,7 +356,7 @@ func NewWithServices(
 			user.MountRoutes(protected, userService.(*user.Handler))
 		}
 		if vendorService != nil {
-			vendor.MountRoutes(protected, vendorService.(*vendor.Handler))
+			vendors.MountRoutes(protected, vendorService.(*vendors.Handler))
 		}
 		if conversionService != nil {
 			conversion.MountRoutes(protected, conversionService.(*conversion.Handler))
@@ -378,7 +378,7 @@ func NewWithServices(
 	}
 
 	// Admin routes (require admin auth) - using passed adminHandler
-	adminGroup := r.Group("/api/admin")
+	adminGroup := r.Group("/api")
 	adminGroup.Use(securityMiddleware.JWTAuthMiddleware())
 	adminGroup.Use(securityMiddleware.AdminAuthMiddleware())
 	{
@@ -388,7 +388,7 @@ func NewWithServices(
 	}
 
 	// Notification routes - using passed notificationHandler
-	notificationGroup := r.Group("/api/notifications")
+	notificationGroup := r.Group("/api")
 	notificationGroup.Use(securityMiddleware.OptionalAuthMiddleware())
 	{
 		if notificationService != nil {
@@ -415,7 +415,7 @@ func mountAuth(r *gin.Engine) {
 	store := auth.NewInMemoryStore()
 	limiter := auth.NewInMemoryLimiter()
 	tokens := auth.NewSimpleTokenService()
-	smsProvider := sms.NewProvider(cfg.SMS.Provider, cfg.SMS.APIKey, cfg.SMS.TemplateID)
+	smsProvider := sms.NewProviderWithParameter(cfg.SMS.Provider, cfg.SMS.APIKey, cfg.SMS.TemplateID, cfg.SMS.ParameterName)
 	// Create handler compatible with gin via adapters
 	h := auth.NewHandler(store, tokens, limiter, smsProvider)
 
@@ -463,10 +463,10 @@ func mountVendor(r *gin.RouterGroup) {
 	}
 
 	// Create vendor service and handler
-	_, vendorHandler := vendor.WireVendorService(db)
+	_, vendorHandler := vendors.WireVendorService(db)
 
 	// Mount vendor routes
-	vendor.MountRoutes(r, vendorHandler)
+	vendors.MountRoutes(r, vendorHandler)
 }
 
 func mountConversion(r *gin.RouterGroup) {

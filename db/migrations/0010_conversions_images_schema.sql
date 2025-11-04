@@ -13,6 +13,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- ============================================================================
 
 -- conversions table - Track all image conversion requests
+-- Note: Table already exists from migration 0005, so we only add missing columns
 CREATE TABLE IF NOT EXISTS conversions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -40,6 +41,60 @@ CREATE TABLE IF NOT EXISTS conversions (
         user_image_id != cloth_image_id
     )
 );
+
+-- Add missing columns to existing conversions table
+DO $$ 
+BEGIN
+    -- Add vendor_id if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'conversions' AND column_name = 'vendor_id') THEN
+        ALTER TABLE conversions ADD COLUMN vendor_id UUID REFERENCES vendors(id) ON DELETE CASCADE;
+        -- Make user_id nullable if it's currently NOT NULL
+        ALTER TABLE conversions ALTER COLUMN user_id DROP NOT NULL;
+    END IF;
+    
+    -- Add conversion_type if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'conversions' AND column_name = 'conversion_type') THEN
+        ALTER TABLE conversions ADD COLUMN conversion_type TEXT NOT NULL DEFAULT 'free';
+        ALTER TABLE conversions ADD CONSTRAINT chk_conversion_type CHECK (conversion_type IN ('free', 'paid'));
+    END IF;
+    
+    -- Add style_name if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'conversions' AND column_name = 'style_name') THEN
+        ALTER TABLE conversions ADD COLUMN style_name TEXT;
+    END IF;
+    
+    -- Add metadata if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'conversions' AND column_name = 'metadata') THEN
+        ALTER TABLE conversions ADD COLUMN metadata JSONB DEFAULT '{}';
+    END IF;
+    
+    -- Update status constraint to include 'cancelled'
+    IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname LIKE '%status%' AND conrelid = 'conversions'::regclass) THEN
+        -- Drop old constraint and add new one
+        ALTER TABLE conversions DROP CONSTRAINT IF EXISTS conversions_status_check;
+        ALTER TABLE conversions ADD CONSTRAINT conversions_status_check 
+            CHECK (status IN ('pending', 'processing', 'completed', 'failed', 'cancelled'));
+    END IF;
+    
+    -- Add ownership constraint if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_conversion_ownership') THEN
+        ALTER TABLE conversions ADD CONSTRAINT chk_conversion_ownership CHECK (
+            (user_id IS NOT NULL AND vendor_id IS NULL) OR
+            (vendor_id IS NOT NULL AND user_id IS NULL)
+        );
+    END IF;
+    
+    -- Add images constraint if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_conversion_images') THEN
+        ALTER TABLE conversions ADD CONSTRAINT chk_conversion_images CHECK (
+            user_image_id != cloth_image_id
+        );
+    END IF;
+END $$;
 
 -- ============================================================================
 -- IMAGES TABLE (Enhanced)
@@ -150,6 +205,7 @@ CREATE TABLE IF NOT EXISTS conversion_jobs (
 -- ============================================================================
 
 -- conversion_metrics table - Track conversion performance metrics
+-- Note: Table already exists from migration 0005, so we only add missing columns
 CREATE TABLE IF NOT EXISTS conversion_metrics (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     conversion_id UUID NOT NULL REFERENCES conversions(id) ON DELETE CASCADE,
@@ -170,13 +226,46 @@ CREATE TABLE IF NOT EXISTS conversion_metrics (
     )
 );
 
+-- Add missing columns to existing conversion_metrics table
+DO $$ 
+BEGIN
+    -- Add vendor_id if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'conversion_metrics' AND column_name = 'vendor_id') THEN
+        ALTER TABLE conversion_metrics ADD COLUMN vendor_id UUID REFERENCES vendors(id) ON DELETE CASCADE;
+        -- Make user_id nullable if it's currently NOT NULL
+        ALTER TABLE conversion_metrics ALTER COLUMN user_id DROP NOT NULL;
+    END IF;
+    
+    -- Add ai_model_version if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'conversion_metrics' AND column_name = 'ai_model_version') THEN
+        ALTER TABLE conversion_metrics ADD COLUMN ai_model_version TEXT;
+    END IF;
+    
+    -- Add ownership constraint if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_metrics_actor') THEN
+        ALTER TABLE conversion_metrics ADD CONSTRAINT chk_metrics_actor CHECK (
+            (user_id IS NOT NULL AND vendor_id IS NULL) OR
+            (vendor_id IS NOT NULL AND user_id IS NULL)
+        );
+    END IF;
+END $$;
+
 -- ============================================================================
 -- INDEXES FOR PERFORMANCE
 -- ============================================================================
 
 -- Conversions table indexes
 CREATE INDEX IF NOT EXISTS idx_conversions_user_id ON conversions(user_id);
-CREATE INDEX IF NOT EXISTS idx_conversions_vendor_id ON conversions(vendor_id);
+-- Only create vendor_id index if column exists
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns 
+               WHERE table_name = 'conversions' AND column_name = 'vendor_id') THEN
+        CREATE INDEX IF NOT EXISTS idx_conversions_vendor_id ON conversions(vendor_id);
+    END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS idx_conversions_status ON conversions(status);
 CREATE INDEX IF NOT EXISTS idx_conversions_created_at ON conversions(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_conversions_user_image_id ON conversions(user_image_id);
@@ -187,12 +276,21 @@ CREATE INDEX IF NOT EXISTS idx_conversions_style_name ON conversions(style_name)
 
 -- Composite indexes for common queries
 CREATE INDEX IF NOT EXISTS idx_conversions_user_status ON conversions(user_id, status);
-CREATE INDEX IF NOT EXISTS idx_conversions_vendor_status ON conversions(vendor_id, status);
+-- Only create vendor_status index if vendor_id exists
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns 
+               WHERE table_name = 'conversions' AND column_name = 'vendor_id') THEN
+        CREATE INDEX IF NOT EXISTS idx_conversions_vendor_status ON conversions(vendor_id, status);
+    END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS idx_conversions_status_created ON conversions(status, created_at DESC);
 
 -- Images table indexes
-CREATE INDEX IF NOT EXISTS idx_images_owner_id ON images(owner_id);
-CREATE INDEX IF NOT EXISTS idx_images_owner_type ON images(owner_type);
+-- Note: Existing images table uses user_id/vendor_id, not owner_id/owner_type
+-- Skip owner_id/owner_type indexes as columns don't exist
+-- CREATE INDEX IF NOT EXISTS idx_images_owner_id ON images(owner_id); -- Skipped: column doesn't exist
+-- CREATE INDEX IF NOT EXISTS idx_images_owner_type ON images(owner_type); -- Skipped: column doesn't exist
 CREATE INDEX IF NOT EXISTS idx_images_album_id ON images(album_id);
 CREATE INDEX IF NOT EXISTS idx_images_type ON images(type);
 CREATE INDEX IF NOT EXISTS idx_images_is_public ON images(is_public);
@@ -204,14 +302,22 @@ CREATE INDEX IF NOT EXISTS idx_images_tags ON images USING GIN(tags);
 CREATE INDEX IF NOT EXISTS idx_images_metadata ON images USING GIN(metadata);
 
 -- Composite indexes for images
-CREATE INDEX IF NOT EXISTS idx_images_owner_type_id ON images(owner_type, owner_id);
+-- Note: Existing images table uses user_id/vendor_id, not owner_id/owner_type
+-- CREATE INDEX IF NOT EXISTS idx_images_owner_type_id ON images(owner_type, owner_id); -- Skipped: columns don't exist
 CREATE INDEX IF NOT EXISTS idx_images_type_public ON images(type, is_public);
-CREATE INDEX IF NOT EXISTS idx_images_owner_album ON images(owner_id, owner_type, album_id);
+-- CREATE INDEX IF NOT EXISTS idx_images_owner_album ON images(owner_id, owner_type, album_id); -- Skipped: columns don't exist
 
 -- Image usage history indexes
 CREATE INDEX IF NOT EXISTS idx_image_usage_history_image_id ON image_usage_history(image_id);
 CREATE INDEX IF NOT EXISTS idx_image_usage_history_user_id ON image_usage_history(user_id);
-CREATE INDEX IF NOT EXISTS idx_image_usage_history_vendor_id ON image_usage_history(vendor_id);
+-- Only create vendor_id index if column exists
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns 
+               WHERE table_name = 'image_usage_history' AND column_name = 'vendor_id') THEN
+        CREATE INDEX IF NOT EXISTS idx_image_usage_history_vendor_id ON image_usage_history(vendor_id);
+    END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS idx_image_usage_history_conversion_id ON image_usage_history(conversion_id);
 CREATE INDEX IF NOT EXISTS idx_image_usage_history_action ON image_usage_history(action);
 CREATE INDEX IF NOT EXISTS idx_image_usage_history_created_at ON image_usage_history(created_at DESC);
@@ -220,19 +326,28 @@ CREATE INDEX IF NOT EXISTS idx_image_usage_history_ip_address ON image_usage_his
 -- Composite indexes for usage history
 CREATE INDEX IF NOT EXISTS idx_image_usage_history_image_action ON image_usage_history(image_id, action);
 CREATE INDEX IF NOT EXISTS idx_image_usage_history_user_action ON image_usage_history(user_id, action);
-CREATE INDEX IF NOT EXISTS idx_image_usage_history_vendor_action ON image_usage_history(vendor_id, action);
+-- Only create vendor_action index if vendor_id exists
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns 
+               WHERE table_name = 'image_usage_history' AND column_name = 'vendor_id') THEN
+        CREATE INDEX IF NOT EXISTS idx_image_usage_history_vendor_action ON image_usage_history(vendor_id, action);
+    END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS idx_image_usage_history_action_date ON image_usage_history(action, created_at DESC);
 
 -- Albums table indexes
-CREATE INDEX IF NOT EXISTS idx_albums_owner_id ON albums(owner_id);
-CREATE INDEX IF NOT EXISTS idx_albums_owner_type ON albums(owner_type);
+-- Note: Existing albums table uses vendor_id, not owner_id/owner_type
+-- CREATE INDEX IF NOT EXISTS idx_albums_owner_id ON albums(owner_id); -- Skipped: column doesn't exist
+-- CREATE INDEX IF NOT EXISTS idx_albums_owner_type ON albums(owner_type); -- Skipped: column doesn't exist
 CREATE INDEX IF NOT EXISTS idx_albums_is_public ON albums(is_public);
 CREATE INDEX IF NOT EXISTS idx_albums_created_at ON albums(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_albums_name ON albums(name);
 
 -- Composite indexes for albums
-CREATE INDEX IF NOT EXISTS idx_albums_owner_type_id ON albums(owner_type, owner_id);
-CREATE INDEX IF NOT EXISTS idx_albums_owner_public ON albums(owner_id, owner_type, is_public);
+-- Note: Existing albums table uses vendor_id, not owner_id/owner_type
+-- CREATE INDEX IF NOT EXISTS idx_albums_owner_type_id ON albums(owner_type, owner_id); -- Skipped: columns don't exist
+-- CREATE INDEX IF NOT EXISTS idx_albums_owner_public ON albums(owner_id, owner_type, is_public); -- Skipped: columns don't exist
 
 -- Conversion jobs indexes
 CREATE INDEX IF NOT EXISTS idx_conversion_jobs_conversion_id ON conversion_jobs(conversion_id);
@@ -244,7 +359,14 @@ CREATE INDEX IF NOT EXISTS idx_conversion_jobs_created_at ON conversion_jobs(cre
 -- Conversion metrics indexes
 CREATE INDEX IF NOT EXISTS idx_conversion_metrics_conversion_id ON conversion_metrics(conversion_id);
 CREATE INDEX IF NOT EXISTS idx_conversion_metrics_user_id ON conversion_metrics(user_id);
-CREATE INDEX IF NOT EXISTS idx_conversion_metrics_vendor_id ON conversion_metrics(vendor_id);
+-- Only create vendor_id index if column exists
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns 
+               WHERE table_name = 'conversion_metrics' AND column_name = 'vendor_id') THEN
+        CREATE INDEX IF NOT EXISTS idx_conversion_metrics_vendor_id ON conversion_metrics(vendor_id);
+    END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS idx_conversion_metrics_created_at ON conversion_metrics(created_at);
 CREATE INDEX IF NOT EXISTS idx_conversion_metrics_success ON conversion_metrics(success);
 
@@ -261,22 +383,33 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Triggers for updated_at
-CREATE TRIGGER trg_conversions_updated_at
-BEFORE UPDATE ON conversions
-FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-
-CREATE TRIGGER trg_images_updated_at
-BEFORE UPDATE ON images
-FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-
-CREATE TRIGGER trg_albums_updated_at
-BEFORE UPDATE ON albums
-FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-
-CREATE TRIGGER trg_conversion_jobs_updated_at
-BEFORE UPDATE ON conversion_jobs
-FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+-- Triggers for updated_at (may already exist)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_conversions_updated_at') THEN
+        CREATE TRIGGER trg_conversions_updated_at
+        BEFORE UPDATE ON conversions
+        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_images_updated_at') THEN
+        CREATE TRIGGER trg_images_updated_at
+        BEFORE UPDATE ON images
+        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_albums_updated_at') THEN
+        CREATE TRIGGER trg_albums_updated_at
+        BEFORE UPDATE ON albums
+        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_conversion_jobs_updated_at') THEN
+        CREATE TRIGGER trg_conversion_jobs_updated_at
+        BEFORE UPDATE ON conversion_jobs
+        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+    END IF;
+END $$;
 
 -- ============================================================================
 -- TRIGGERS FOR COUNT UPDATES
@@ -357,23 +490,34 @@ BEGIN
     END IF;
     
     -- Validate images exist and belong to owner
-    IF NOT EXISTS (
-        SELECT 1 FROM images 
-        WHERE id = p_user_image_id 
-        AND owner_id = owner_id 
-        AND owner_type = owner_type
-        AND type = 'user'
-    ) THEN
-        RAISE EXCEPTION 'User image not found or does not belong to owner';
+    -- Note: images table uses user_id/vendor_id, not owner_id/owner_type
+    IF p_user_id IS NOT NULL THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM images 
+            WHERE id = p_user_image_id 
+            AND user_id = p_user_id
+            AND type IN ('user', 'result')
+        ) THEN
+            RAISE EXCEPTION 'User image not found or does not belong to user';
+        END IF;
+    ELSIF p_vendor_id IS NOT NULL THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM images 
+            WHERE id = p_user_image_id 
+            AND vendor_id = p_vendor_id
+            AND type IN ('vendor', 'result')
+        ) THEN
+            RAISE EXCEPTION 'Image not found or does not belong to vendor';
+        END IF;
     END IF;
     
+    -- Validate cloth image (can be public vendor image)
     IF NOT EXISTS (
         SELECT 1 FROM images 
         WHERE id = p_cloth_image_id 
-        AND type = 'cloth'
-        AND is_public = true
+        AND (type = 'vendor' OR is_public = true)
     ) THEN
-        RAISE EXCEPTION 'Cloth image not found or not public';
+        RAISE EXCEPTION 'Cloth image not found or not accessible';
     END IF;
     
     -- Create conversion record
@@ -515,14 +659,15 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Function to get image statistics
+-- Note: Adapted for existing images table structure (user_id/vendor_id)
 CREATE OR REPLACE FUNCTION get_image_stats(
-    p_owner_id UUID DEFAULT NULL,
-    p_owner_type TEXT DEFAULT NULL,
+    p_user_id UUID DEFAULT NULL,
+    p_vendor_id UUID DEFAULT NULL,
     p_image_type TEXT DEFAULT NULL
 ) RETURNS TABLE (
     total_images BIGINT,
     user_images BIGINT,
-    cloth_images BIGINT,
+    vendor_images BIGINT,
     result_images BIGINT,
     public_images BIGINT,
     private_images BIGINT,
@@ -534,15 +679,15 @@ BEGIN
     SELECT 
         COUNT(*) as total_images,
         COUNT(*) FILTER (WHERE i.type = 'user') as user_images,
-        COUNT(*) FILTER (WHERE i.type = 'cloth') as cloth_images,
+        COUNT(*) FILTER (WHERE i.type = 'vendor') as vendor_images,
         COUNT(*) FILTER (WHERE i.type = 'result') as result_images,
         COUNT(*) FILTER (WHERE i.is_public = true) as public_images,
         COUNT(*) FILTER (WHERE i.is_public = false) as private_images,
         COALESCE(SUM(i.file_size), 0) as total_file_size,
         COALESCE(AVG(i.file_size), 0) as average_file_size
     FROM images i
-    WHERE (p_owner_id IS NULL OR i.owner_id = p_owner_id)
-    AND (p_owner_type IS NULL OR i.owner_type = p_owner_type)
+    WHERE (p_user_id IS NULL OR i.user_id = p_user_id)
+    AND (p_vendor_id IS NULL OR i.vendor_id = p_vendor_id)
     AND (p_image_type IS NULL OR i.type = p_image_type);
 END;
 $$ LANGUAGE plpgsql;

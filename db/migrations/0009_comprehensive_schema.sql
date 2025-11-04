@@ -22,6 +22,7 @@ $$ LANGUAGE plpgsql;
 -- ============================================================================
 
 -- Users table - Core user information
+-- Note: Table may already exist, so we only add missing columns
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     phone TEXT NOT NULL UNIQUE,
@@ -38,25 +39,64 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Add missing columns to existing users table
+DO $$ 
+BEGIN
+    -- Add plan_id if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'users' AND column_name = 'plan_id') THEN
+        ALTER TABLE users ADD COLUMN plan_id UUID REFERENCES payment_plans(id) ON DELETE SET NULL;
+    END IF;
+    
+    -- Rename free_conversions_used/limit to free_quota_remaining if needed
+    IF EXISTS (SELECT 1 FROM information_schema.columns 
+               WHERE table_name = 'users' AND column_name = 'free_conversions_used') THEN
+        -- Keep both columns for backward compatibility
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                       WHERE table_name = 'users' AND column_name = 'free_quota_remaining') THEN
+            ALTER TABLE users ADD COLUMN free_quota_remaining INTEGER NOT NULL DEFAULT 2;
+        END IF;
+    END IF;
+END $$;
+
 -- Vendors table - Separate vendor information
-CREATE TABLE IF NOT EXISTS vendors (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    phone TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
-    free_gallery_remaining INTEGER NOT NULL DEFAULT 10,
-    plan_id UUID REFERENCES payment_plans(id) ON DELETE SET NULL,
-    profile_info JSONB NOT NULL DEFAULT '{}',
-    business_name TEXT NOT NULL,
-    avatar_url TEXT,
-    bio TEXT,
-    contact_info JSONB NOT NULL DEFAULT '{}',
-    social_links JSONB NOT NULL DEFAULT '{}',
-    is_verified BOOLEAN NOT NULL DEFAULT false,
-    is_active BOOLEAN NOT NULL DEFAULT true,
-    last_login_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+-- Note: Table already exists from migration 0003 with different structure
+-- We only add missing columns and don't recreate the table
+DO $$ 
+BEGIN
+    -- Add plan_id if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'vendors' AND column_name = 'plan_id') THEN
+        ALTER TABLE vendors ADD COLUMN plan_id UUID REFERENCES payment_plans(id) ON DELETE SET NULL;
+    END IF;
+    
+    -- Add free_gallery_remaining if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'vendors' AND column_name = 'free_gallery_remaining') THEN
+        ALTER TABLE vendors ADD COLUMN free_gallery_remaining INTEGER NOT NULL DEFAULT 10;
+    END IF;
+    
+    -- Add profile_info if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'vendors' AND column_name = 'profile_info') THEN
+        ALTER TABLE vendors ADD COLUMN profile_info JSONB NOT NULL DEFAULT '{}';
+    END IF;
+    
+    -- Add contact_info if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'vendors' AND column_name = 'contact_info') THEN
+        ALTER TABLE vendors ADD COLUMN contact_info JSONB NOT NULL DEFAULT '{}';
+    END IF;
+    
+    -- Add social_links if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'vendors' AND column_name = 'social_links') THEN
+        ALTER TABLE vendors ADD COLUMN social_links JSONB NOT NULL DEFAULT '{}';
+    END IF;
+    
+    -- Note: vendors table structure from migration 0003 uses user_id reference
+    -- We don't modify core structure, only add optional fields
+END $$;
 
 -- ============================================================================
 -- SHARED TABLES
@@ -118,6 +158,7 @@ CREATE TABLE IF NOT EXISTS albums (
 );
 
 -- Payments table - Payment transactions
+-- Note: Table may already exist from migration 0006, so we only add missing columns
 CREATE TABLE IF NOT EXISTS payments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -146,6 +187,29 @@ CREATE TABLE IF NOT EXISTS payments (
     )
 );
 
+-- Add missing columns to existing payments table
+DO $$ 
+BEGIN
+    -- Add vendor_id if it doesn't exist (migration 0006 only has user_id)
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'payments' AND column_name = 'vendor_id') THEN
+        ALTER TABLE payments ADD COLUMN vendor_id UUID REFERENCES vendors(id) ON DELETE CASCADE;
+    END IF;
+    
+    -- Drop old constraint if it exists and add new one
+    IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_payment_ownership') THEN
+        ALTER TABLE payments DROP CONSTRAINT chk_payment_ownership;
+    END IF;
+    
+    -- Add new constraint (only if it doesn't exist)
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_payment_ownership') THEN
+        ALTER TABLE payments ADD CONSTRAINT chk_payment_ownership CHECK (
+            (user_id IS NOT NULL AND vendor_id IS NULL) OR
+            (vendor_id IS NOT NULL AND user_id IS NULL)
+        );
+    END IF;
+END $$;
+
 -- Rate limits table - Track rate limiting
 CREATE TABLE IF NOT EXISTS rate_limits (
     id BIGSERIAL PRIMARY KEY,
@@ -160,6 +224,7 @@ CREATE TABLE IF NOT EXISTS rate_limits (
 -- ============================================================================
 
 -- Payment plans table - Available subscription plans
+-- Note: Table already exists from migration 0006, so we only add missing columns
 CREATE TABLE IF NOT EXISTS payment_plans (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL UNIQUE,
@@ -174,7 +239,18 @@ CREATE TABLE IF NOT EXISTS payment_plans (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Add missing columns to existing payment_plans table
+DO $$ 
+BEGIN
+    -- Add monthly_images_limit if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'payment_plans' AND column_name = 'monthly_images_limit') THEN
+        ALTER TABLE payment_plans ADD COLUMN monthly_images_limit INTEGER NOT NULL DEFAULT 0;
+    END IF;
+END $$;
+
 -- Sessions table - Store hashed refresh tokens
+-- Note: Table already exists from migration 0001, so we only add missing columns
 CREATE TABLE IF NOT EXISTS sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -194,6 +270,26 @@ CREATE TABLE IF NOT EXISTS sessions (
     )
 );
 
+-- Add missing columns to existing sessions table
+DO $$ 
+BEGIN
+    -- Add vendor_id if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'sessions' AND column_name = 'vendor_id') THEN
+        ALTER TABLE sessions ADD COLUMN vendor_id UUID REFERENCES vendors(id) ON DELETE CASCADE;
+        -- Make user_id nullable if it's currently NOT NULL
+        ALTER TABLE sessions ALTER COLUMN user_id DROP NOT NULL;
+    END IF;
+    
+    -- Add ownership constraint if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_session_ownership') THEN
+        ALTER TABLE sessions ADD CONSTRAINT chk_session_ownership CHECK (
+            (user_id IS NOT NULL AND vendor_id IS NULL) OR
+            (vendor_id IS NOT NULL AND user_id IS NULL)
+        );
+    END IF;
+END $$;
+
 -- OTPs table - Store hashed codes
 CREATE TABLE IF NOT EXISTS otps (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -207,6 +303,8 @@ CREATE TABLE IF NOT EXISTS otps (
 );
 
 -- Audit logs table
+-- Audit logs table - Track all admin actions and system events
+-- Note: Table already exists from migration 0007, so we only add missing columns
 CREATE TABLE IF NOT EXISTS audit_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE SET NULL,
@@ -226,6 +324,33 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     )
 );
 
+-- Add missing columns to existing audit_logs table
+DO $$ 
+BEGIN
+    -- Add vendor_id if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'audit_logs' AND column_name = 'vendor_id') THEN
+        ALTER TABLE audit_logs ADD COLUMN vendor_id UUID REFERENCES vendors(id) ON DELETE SET NULL;
+    END IF;
+    
+    -- Update actor_type constraint if needed (to include vendor)
+    IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'audit_logs_actor_type_check') THEN
+        -- Check if constraint allows vendor
+        ALTER TABLE audit_logs DROP CONSTRAINT IF EXISTS audit_logs_actor_type_check;
+        ALTER TABLE audit_logs ADD CONSTRAINT audit_logs_actor_type_check 
+            CHECK (actor_type IN ('system','user','vendor','admin'));
+    END IF;
+    
+    -- Add ownership constraint if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_audit_ownership') THEN
+        ALTER TABLE audit_logs ADD CONSTRAINT chk_audit_ownership CHECK (
+            (user_id IS NOT NULL AND vendor_id IS NULL) OR
+            (vendor_id IS NOT NULL AND user_id IS NULL) OR
+            (user_id IS NULL AND vendor_id IS NULL)
+        );
+    END IF;
+END $$;
+
 -- ============================================================================
 -- INDEXES FOR PERFORMANCE
 -- ============================================================================
@@ -239,13 +364,14 @@ CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
 CREATE INDEX IF NOT EXISTS idx_users_last_login_at ON users(last_login_at);
 
 -- Vendors table indexes
-CREATE INDEX IF NOT EXISTS idx_vendors_phone ON vendors(phone);
+-- Note: vendors table doesn't have phone column (uses user_id reference)
+-- CREATE INDEX IF NOT EXISTS idx_vendors_phone ON vendors(phone); -- Skipped: column doesn't exist
 CREATE INDEX IF NOT EXISTS idx_vendors_plan_id ON vendors(plan_id);
 CREATE INDEX IF NOT EXISTS idx_vendors_business_name ON vendors(business_name);
 CREATE INDEX IF NOT EXISTS idx_vendors_is_verified ON vendors(is_verified);
 CREATE INDEX IF NOT EXISTS idx_vendors_is_active ON vendors(is_active);
 CREATE INDEX IF NOT EXISTS idx_vendors_created_at ON vendors(created_at);
-CREATE INDEX IF NOT EXISTS idx_vendors_last_login_at ON vendors(last_login_at);
+-- CREATE INDEX IF NOT EXISTS idx_vendors_last_login_at ON vendors(last_login_at); -- Skipped: column may not exist
 
 -- User conversions table indexes
 CREATE INDEX IF NOT EXISTS idx_user_conversions_user_id ON user_conversions(user_id);
@@ -275,7 +401,14 @@ CREATE INDEX IF NOT EXISTS idx_albums_name ON albums(name);
 
 -- Payments table indexes
 CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id);
-CREATE INDEX IF NOT EXISTS idx_payments_vendor_id ON payments(vendor_id);
+-- Only create vendor_id index if column exists
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns 
+               WHERE table_name = 'payments' AND column_name = 'vendor_id') THEN
+        CREATE INDEX IF NOT EXISTS idx_payments_vendor_id ON payments(vendor_id);
+    END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS idx_payments_plan_id ON payments(plan_id);
 CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);
 CREATE INDEX IF NOT EXISTS idx_payments_gateway_track_id ON payments(gateway_track_id);
@@ -293,10 +426,24 @@ CREATE INDEX IF NOT EXISTS idx_payment_plans_price ON payment_plans(price_per_mo
 
 -- Sessions table indexes
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
-CREATE INDEX IF NOT EXISTS idx_sessions_vendor_id ON sessions(vendor_id);
+-- Only create vendor_id index if column exists
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns 
+               WHERE table_name = 'sessions' AND column_name = 'vendor_id') THEN
+        CREATE INDEX IF NOT EXISTS idx_sessions_vendor_id ON sessions(vendor_id);
+    END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
 CREATE INDEX IF NOT EXISTS idx_sessions_active_user ON sessions(user_id) WHERE revoked_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_sessions_active_vendor ON sessions(vendor_id) WHERE revoked_at IS NULL;
+-- Only create vendor_id index if column exists
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns 
+               WHERE table_name = 'sessions' AND column_name = 'vendor_id') THEN
+        CREATE INDEX IF NOT EXISTS idx_sessions_active_vendor ON sessions(vendor_id) WHERE revoked_at IS NULL;
+    END IF;
+END $$;
 
 -- OTPs table indexes
 CREATE INDEX IF NOT EXISTS idx_otps_phone_created_at ON otps(phone, created_at DESC);
@@ -305,7 +452,14 @@ CREATE INDEX IF NOT EXISTS idx_otps_phone_unconsumed ON otps(phone) WHERE consum
 
 -- Audit logs table indexes
 CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_vendor_id ON audit_logs(vendor_id);
+-- Only create vendor_id index if column exists
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns 
+               WHERE table_name = 'audit_logs' AND column_name = 'vendor_id') THEN
+        CREATE INDEX IF NOT EXISTS idx_audit_logs_vendor_id ON audit_logs(vendor_id);
+    END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS idx_audit_logs_actor_type ON audit_logs(actor_type);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_resource ON audit_logs(resource);
@@ -317,29 +471,49 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_metadata_gin ON audit_logs USING GIN (
 -- TRIGGERS FOR UPDATED_AT
 -- ============================================================================
 
-CREATE TRIGGER trg_users_updated_at
-BEFORE UPDATE ON users
-FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+-- Triggers may already exist, so use DO block
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_users_updated_at') THEN
+        CREATE TRIGGER trg_users_updated_at
+        BEFORE UPDATE ON users
+        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_vendors_updated_at') THEN
+        CREATE TRIGGER trg_vendors_updated_at
+        BEFORE UPDATE ON vendors
+        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+    END IF;
+END $$;
 
-CREATE TRIGGER trg_vendors_updated_at
-BEFORE UPDATE ON vendors
-FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-
-CREATE TRIGGER trg_images_updated_at
-BEFORE UPDATE ON images
-FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-
-CREATE TRIGGER trg_albums_updated_at
-BEFORE UPDATE ON albums
-FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-
-CREATE TRIGGER trg_payments_updated_at
-BEFORE UPDATE ON payments
-FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-
-CREATE TRIGGER trg_payment_plans_updated_at
-BEFORE UPDATE ON payment_plans
-FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+-- Other triggers may already exist
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_images_updated_at') THEN
+        CREATE TRIGGER trg_images_updated_at
+        BEFORE UPDATE ON images
+        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_albums_updated_at') THEN
+        CREATE TRIGGER trg_albums_updated_at
+        BEFORE UPDATE ON albums
+        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_payments_updated_at') THEN
+        CREATE TRIGGER trg_payments_updated_at
+        BEFORE UPDATE ON payments
+        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_payment_plans_updated_at') THEN
+        CREATE TRIGGER trg_payment_plans_updated_at
+        BEFORE UPDATE ON payment_plans
+        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+    END IF;
+END $$;
 
 -- ============================================================================
 -- DEFAULT DATA
@@ -393,9 +567,9 @@ RETURNS TABLE (
 BEGIN
     RETURN QUERY
     SELECT 
-        GREATEST(0, v.free_gallery_remaining) as free_images_remaining,
+        GREATEST(0, COALESCE(v.free_gallery_remaining, v.free_images_limit - v.free_images_used, 10)) as free_images_remaining,
         GREATEST(0, COALESCE(pp.monthly_images_limit, 0)) as paid_images_remaining,
-        GREATEST(0, v.free_gallery_remaining) + GREATEST(0, COALESCE(pp.monthly_images_limit, 0)) as total_images_remaining,
+        GREATEST(0, COALESCE(v.free_gallery_remaining, v.free_images_limit - v.free_images_used, 10)) + GREATEST(0, COALESCE(pp.monthly_images_limit, 0)) as total_images_remaining,
         COALESCE(pp.name, 'vendor_free') as plan_name,
         COALESCE(pp.monthly_images_limit, 0) as monthly_limit
     FROM vendors v
@@ -512,7 +686,8 @@ BEGIN
     -- Update vendor's free image count if it's a vendor image
     IF p_type = 'vendor' AND p_vendor_id IS NOT NULL THEN
         UPDATE vendors 
-        SET free_gallery_remaining = GREATEST(0, free_gallery_remaining - 1)
+        SET free_gallery_remaining = GREATEST(0, COALESCE(free_gallery_remaining, free_images_limit - free_images_used, 10) - 1),
+            free_images_used = free_images_used + 1
         WHERE id = p_vendor_id;
     END IF;
     

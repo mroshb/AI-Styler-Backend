@@ -15,17 +15,9 @@ CREATE TABLE IF NOT EXISTS shared_links (
     max_access_count INTEGER DEFAULT NULL, -- Optional access limit
     is_active BOOLEAN NOT NULL DEFAULT true, -- Can be deactivated before expiry
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    
-    -- Ensure conversion is completed before sharing
-    CONSTRAINT chk_conversion_completed CHECK (
-        EXISTS (
-            SELECT 1 FROM conversions 
-            WHERE id = conversion_id 
-            AND status = 'completed' 
-            AND result_image_id IS NOT NULL
-        )
-    )
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    -- Note: PostgreSQL doesn't allow subqueries in CHECK constraints
+    -- Validation will be done in application layer or via trigger
 );
 
 -- Create indexes for shared_links table
@@ -41,9 +33,14 @@ CREATE INDEX IF NOT EXISTS idx_shared_links_active_expires ON shared_links(is_ac
 CREATE INDEX IF NOT EXISTS idx_shared_links_user_active ON shared_links(user_id, is_active);
 
 -- Add trigger for shared_links updated_at
-CREATE TRIGGER trg_shared_links_updated_at
-BEFORE UPDATE ON shared_links
-FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_shared_links_updated_at') THEN
+        CREATE TRIGGER trg_shared_links_updated_at
+        BEFORE UPDATE ON shared_links
+        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+    END IF;
+END $$;
 
 -- shared_link_access_logs table - track all access attempts to shared links
 CREATE TABLE IF NOT EXISTS shared_link_access_logs (
@@ -357,14 +354,19 @@ LEFT JOIN images i ON c.result_image_id = i.id
 WHERE sl.is_active = true 
 AND sl.expires_at > NOW();
 
--- Grant necessary permissions
-GRANT SELECT, INSERT, UPDATE, DELETE ON shared_links TO app_user;
-GRANT SELECT, INSERT ON shared_link_access_logs TO app_user;
-GRANT SELECT ON active_shared_links TO app_user;
-GRANT EXECUTE ON FUNCTION create_shared_link TO app_user;
-GRANT EXECUTE ON FUNCTION access_shared_link TO app_user;
-GRANT EXECUTE ON FUNCTION deactivate_shared_link TO app_user;
-GRANT EXECUTE ON FUNCTION get_shared_link_stats TO app_user;
-GRANT EXECUTE ON FUNCTION cleanup_expired_shared_links TO app_user;
+-- Grant necessary permissions (only if app_user role exists)
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_user') THEN
+        GRANT SELECT, INSERT, UPDATE, DELETE ON shared_links TO app_user;
+        GRANT SELECT, INSERT ON shared_link_access_logs TO app_user;
+        GRANT SELECT ON active_shared_links TO app_user;
+        GRANT EXECUTE ON FUNCTION create_shared_link TO app_user;
+        GRANT EXECUTE ON FUNCTION access_shared_link TO app_user;
+        GRANT EXECUTE ON FUNCTION deactivate_shared_link TO app_user;
+        GRANT EXECUTE ON FUNCTION get_shared_link_stats TO app_user;
+        GRANT EXECUTE ON FUNCTION cleanup_expired_shared_links TO app_user;
+    END IF;
+END $$;
 
 COMMIT;

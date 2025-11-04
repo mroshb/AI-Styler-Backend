@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS shared_links (
 );
 
 -- Shared link access logs table - Track access attempts
+-- Note: Table already exists from migration 0012, so we only add missing columns
 CREATE TABLE IF NOT EXISTS shared_link_access_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     shared_link_id UUID NOT NULL REFERENCES shared_links(id) ON DELETE CASCADE,
@@ -36,6 +37,25 @@ CREATE TABLE IF NOT EXISTS shared_link_access_logs (
     success BOOLEAN NOT NULL DEFAULT true,
     error_message TEXT
 );
+
+-- Add missing columns to existing shared_link_access_logs table
+DO $$ 
+BEGIN
+    -- Add accessed_at if it doesn't exist (migration 0012 uses created_at)
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'shared_link_access_logs' AND column_name = 'accessed_at') THEN
+        -- Add accessed_at column and copy data from created_at if it exists
+        IF EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'shared_link_access_logs' AND column_name = 'created_at') THEN
+            ALTER TABLE shared_link_access_logs ADD COLUMN accessed_at TIMESTAMPTZ;
+            UPDATE shared_link_access_logs SET accessed_at = created_at WHERE accessed_at IS NULL;
+            ALTER TABLE shared_link_access_logs ALTER COLUMN accessed_at SET NOT NULL;
+            ALTER TABLE shared_link_access_logs ALTER COLUMN accessed_at SET DEFAULT NOW();
+        ELSE
+            ALTER TABLE shared_link_access_logs ADD COLUMN accessed_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+        END IF;
+    END IF;
+END $$;
 
 -- ============================================================================
 -- INDEXES FOR PERFORMANCE
@@ -51,7 +71,14 @@ CREATE INDEX IF NOT EXISTS idx_shared_links_created_at ON shared_links(created_a
 
 -- Shared link access logs table indexes
 CREATE INDEX IF NOT EXISTS idx_shared_link_access_logs_shared_link_id ON shared_link_access_logs(shared_link_id);
-CREATE INDEX IF NOT EXISTS idx_shared_link_access_logs_accessed_at ON shared_link_access_logs(accessed_at DESC);
+-- Only create accessed_at index if column exists
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns 
+               WHERE table_name = 'shared_link_access_logs' AND column_name = 'accessed_at') THEN
+        CREATE INDEX IF NOT EXISTS idx_shared_link_access_logs_accessed_at ON shared_link_access_logs(accessed_at DESC);
+    END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS idx_shared_link_access_logs_success ON shared_link_access_logs(success);
 CREATE INDEX IF NOT EXISTS idx_shared_link_access_logs_ip_address ON shared_link_access_logs(ip_address);
 
@@ -59,9 +86,15 @@ CREATE INDEX IF NOT EXISTS idx_shared_link_access_logs_ip_address ON shared_link
 -- TRIGGERS FOR UPDATED_AT
 -- ============================================================================
 
-CREATE TRIGGER trg_shared_links_updated_at
-BEFORE UPDATE ON shared_links
-FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+-- Trigger may already exist
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_shared_links_updated_at') THEN
+        CREATE TRIGGER trg_shared_links_updated_at
+        BEFORE UPDATE ON shared_links
+        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+    END IF;
+END $$;
 
 -- ============================================================================
 -- UTILITY FUNCTIONS
@@ -82,6 +115,16 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Function to get shared link statistics
+-- Note: Function may already exist with different return type from migration 0012
+-- Drop and recreate if signature differs
+DO $$ 
+BEGIN
+    -- Drop function if it exists with different signature
+    DROP FUNCTION IF EXISTS get_shared_link_stats(UUID, UUID);
+EXCEPTION 
+    WHEN OTHERS THEN NULL;
+END $$;
+
 CREATE OR REPLACE FUNCTION get_shared_link_stats(p_user_id UUID, p_conversion_id UUID)
 RETURNS TABLE (
     total_shared_links INTEGER,
@@ -165,16 +208,24 @@ $$ LANGUAGE plpgsql;
 -- ============================================================================
 
 -- Ensure share_token is unique and not empty
-ALTER TABLE shared_links ADD CONSTRAINT chk_share_token_not_empty CHECK (LENGTH(share_token) > 0);
-
--- Ensure expires_at is in the future when created
-ALTER TABLE shared_links ADD CONSTRAINT chk_expires_at_future CHECK (expires_at > created_at);
-
--- Ensure max_access_count is positive if provided
-ALTER TABLE shared_links ADD CONSTRAINT chk_max_access_count_positive CHECK (max_access_count IS NULL OR max_access_count > 0);
-
--- Ensure access_count is non-negative
-ALTER TABLE shared_links ADD CONSTRAINT chk_access_count_non_negative CHECK (access_count >= 0);
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_share_token_not_empty') THEN
+        ALTER TABLE shared_links ADD CONSTRAINT chk_share_token_not_empty CHECK (LENGTH(share_token) > 0);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_expires_at_future') THEN
+        ALTER TABLE shared_links ADD CONSTRAINT chk_expires_at_future CHECK (expires_at > created_at);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_max_access_count_positive') THEN
+        ALTER TABLE shared_links ADD CONSTRAINT chk_max_access_count_positive CHECK (max_access_count IS NULL OR max_access_count > 0);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_access_count_non_negative') THEN
+        ALTER TABLE shared_links ADD CONSTRAINT chk_access_count_non_negative CHECK (access_count >= 0);
+    END IF;
+END $$;
 
 -- ============================================================================
 -- COMMENTS FOR DOCUMENTATION

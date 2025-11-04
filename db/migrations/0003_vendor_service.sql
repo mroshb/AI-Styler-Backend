@@ -4,43 +4,96 @@
 BEGIN;
 
 -- vendors table - vendor profiles and business information
+-- Note: vendors table already exists in 0001_auth.sql, we just add missing columns here
 CREATE TABLE IF NOT EXISTS vendors (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    business_name TEXT NOT NULL,
-    avatar_url TEXT,
-    bio TEXT,
-    contact_info JSONB NOT NULL DEFAULT '{}',
-    social_links JSONB NOT NULL DEFAULT '{}',
-    is_verified BOOLEAN NOT NULL DEFAULT false,
-    is_active BOOLEAN NOT NULL DEFAULT true,
-    free_images_used INTEGER NOT NULL DEFAULT 0,
-    free_images_limit INTEGER NOT NULL DEFAULT 10,
+    display_name TEXT,
+    company_name TEXT,
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','suspended')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE(user_id)
 );
 
--- Add business_name column if it doesn't exist
+-- Add new columns if they don't exist
 DO $$ 
 BEGIN
+    -- Add business_name (alias for company_name)
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                    WHERE table_name = 'vendors' AND column_name = 'business_name') THEN
-        ALTER TABLE vendors ADD COLUMN business_name TEXT NOT NULL DEFAULT 'Unknown Business';
+        ALTER TABLE vendors ADD COLUMN business_name TEXT;
+        -- Copy data from company_name if it exists
+        UPDATE vendors SET business_name = COALESCE(company_name, 'Unknown Business') WHERE business_name IS NULL;
+    END IF;
+    
+    -- Add avatar_url
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'vendors' AND column_name = 'avatar_url') THEN
+        ALTER TABLE vendors ADD COLUMN avatar_url TEXT;
+    END IF;
+    
+    -- Add bio
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'vendors' AND column_name = 'bio') THEN
+        ALTER TABLE vendors ADD COLUMN bio TEXT;
+    END IF;
+    
+    -- Add contact_info
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'vendors' AND column_name = 'contact_info') THEN
+        ALTER TABLE vendors ADD COLUMN contact_info JSONB NOT NULL DEFAULT '{}';
+    END IF;
+    
+    -- Add social_links
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'vendors' AND column_name = 'social_links') THEN
+        ALTER TABLE vendors ADD COLUMN social_links JSONB NOT NULL DEFAULT '{}';
+    END IF;
+    
+    -- Add is_verified
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'vendors' AND column_name = 'is_verified') THEN
+        ALTER TABLE vendors ADD COLUMN is_verified BOOLEAN NOT NULL DEFAULT false;
+    END IF;
+    
+    -- Add is_active (alias for status check)
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'vendors' AND column_name = 'is_active') THEN
+        ALTER TABLE vendors ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT true;
+        -- Set based on status
+        UPDATE vendors SET is_active = (status = 'active');
+    END IF;
+    
+    -- Add free_images_used
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'vendors' AND column_name = 'free_images_used') THEN
+        ALTER TABLE vendors ADD COLUMN free_images_used INTEGER NOT NULL DEFAULT 0;
+    END IF;
+    
+    -- Add free_images_limit
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'vendors' AND column_name = 'free_images_limit') THEN
+        ALTER TABLE vendors ADD COLUMN free_images_limit INTEGER NOT NULL DEFAULT 10;
     END IF;
 END $$;
 
--- Create indexes for vendors table
+-- Create indexes for vendors table (only if they don't exist)
 CREATE INDEX IF NOT EXISTS idx_vendors_user_id ON vendors(user_id);
 CREATE INDEX IF NOT EXISTS idx_vendors_business_name ON vendors(business_name);
 CREATE INDEX IF NOT EXISTS idx_vendors_is_verified ON vendors(is_verified);
 CREATE INDEX IF NOT EXISTS idx_vendors_is_active ON vendors(is_active);
 CREATE INDEX IF NOT EXISTS idx_vendors_created_at ON vendors(created_at DESC);
 
--- Add trigger for vendors updated_at
-CREATE TRIGGER trg_vendors_updated_at
-BEFORE UPDATE ON vendors
-FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+-- Add trigger for vendors updated_at (only if it doesn't exist)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_vendors_updated_at') THEN
+        CREATE TRIGGER trg_vendors_updated_at
+        BEFORE UPDATE ON vendors
+        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+    END IF;
+END $$;
 
 -- albums table - vendor image albums/categories
 CREATE TABLE IF NOT EXISTS albums (

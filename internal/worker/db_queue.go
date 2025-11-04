@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -84,6 +85,15 @@ func (q *DBJobQueue) DequeueJob(ctx context.Context, workerID string) (*WorkerJo
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil // No jobs available
+		}
+		// Check if error is "relation does not exist" - table hasn't been created yet
+		errStr := err.Error()
+		hasWorkerJobs := strings.Contains(strings.ToLower(errStr), "worker_jobs")
+		hasDoesNotExist := strings.Contains(strings.ToLower(errStr), "does not exist")
+		if errStr != "" && (errStr == `pq: relation "worker_jobs" does not exist` || 
+			errStr == `relation "worker_jobs" does not exist` ||
+			(hasWorkerJobs && hasDoesNotExist)) {
+			return nil, fmt.Errorf("worker_jobs table does not exist - please run migrations: %w", err)
 		}
 		return nil, err
 	}

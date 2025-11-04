@@ -60,10 +60,11 @@ func TestSMSIrProvider_Send(t *testing.T) {
 
 	// Create provider with test server URL
 	provider := &SMSIrProvider{
-		APIKey:     "test-api-key",
-		TemplateID: 100000,
-		BaseURL:    server.URL,
-		HTTPClient: server.Client(),
+		APIKey:        "test-api-key",
+		TemplateID:    100000,
+		ParameterName: "Code",
+		BaseURL:       server.URL,
+		HTTPClient:    server.Client(),
 	}
 
 	// Test successful send
@@ -86,10 +87,11 @@ func TestSMSIrProvider_Send_ErrorResponse(t *testing.T) {
 	defer server.Close()
 
 	provider := &SMSIrProvider{
-		APIKey:     "test-api-key",
-		TemplateID: 100000,
-		BaseURL:    server.URL,
-		HTTPClient: server.Client(),
+		APIKey:        "test-api-key",
+		TemplateID:    100000,
+		ParameterName: "Code",
+		BaseURL:       server.URL,
+		HTTPClient:    server.Client(),
 	}
 
 	// Test error response
@@ -118,10 +120,11 @@ func TestSMSIrProvider_Send_PhoneFormatting(t *testing.T) {
 	defer server.Close()
 
 	provider := &SMSIrProvider{
-		APIKey:     "test-api-key",
-		TemplateID: 100000,
-		BaseURL:    server.URL,
-		HTTPClient: server.Client(),
+		APIKey:        "test-api-key",
+		TemplateID:    100000,
+		ParameterName: "Code",
+		BaseURL:       server.URL,
+		HTTPClient:    server.Client(),
 	}
 
 	err := provider.Send("123456", "+9123456789")

@@ -69,8 +69,10 @@ type sendOtpReq struct {
 }
 
 type sendOtpResp struct {
-	Sent         bool `json:"sent"`
-	ExpiresInSec int  `json:"expiresInSec"`
+	Sent         bool   `json:"sent"`
+	ExpiresInSec int    `json:"expiresInSec"`
+	Code         string `json:"code,omitempty"` // Only returned in development/mock mode
+	Debug        bool   `json:"debug,omitempty"` // Indicates if this is a debug response
 }
 
 func (h *Handler) SendOTP(w http.ResponseWriter, r *http.Request) {
@@ -96,7 +98,18 @@ func (h *Handler) SendOTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = h.sms.Send(code, phone)
-	common.WriteJSON(w, http.StatusOK, sendOtpResp{Sent: true, ExpiresInSec: 300})
+	
+	// If SMS provider is mock, include the code in response for development
+	resp := sendOtpResp{
+		Sent:         true,
+		ExpiresInSec: 300,
+	}
+	if h.sms.IsMock() {
+		resp.Code = code
+		resp.Debug = true
+	}
+	
+	common.WriteJSON(w, http.StatusOK, resp)
 }
 
 type verifyReq struct {
@@ -228,7 +241,11 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user, err := h.store.GetUserByPhone(r.Context(), phone)
-	if err != nil || !h.hasher.Verify(req.Password, user.PasswordHash) {
+	if err != nil {
+		common.WriteError(w, http.StatusUnauthorized, "unauthorized", "invalid credentials", nil)
+		return
+	}
+	if !h.hasher.Verify(req.Password, user.PasswordHash) {
 		common.WriteError(w, http.StatusUnauthorized, "unauthorized", "invalid credentials", nil)
 		return
 	}

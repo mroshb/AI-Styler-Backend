@@ -136,21 +136,20 @@ func runMigrations(db *sql.DB, direction string) error {
 			return err
 		}
 
-		// Execute migration
+		// Execute migration (file already contains BEGIN/COMMIT)
+		_, err = db.Exec(string(content))
+		if err != nil {
+			return fmt.Errorf("failed to execute migration %s: %v", filename, err)
+		}
+
+		// Update migrations table in a separate transaction
 		tx, err := db.Begin()
 		if err != nil {
 			return err
 		}
 
-		_, err = tx.Exec(string(content))
-		if err != nil {
-			tx.Rollback()
-			return fmt.Errorf("failed to execute migration %s: %v", filename, err)
-		}
-
-		// Update migrations table
 		if direction == "up" {
-			_, err = tx.Exec("INSERT INTO schema_migrations (version) VALUES ($1)", version)
+			_, err = tx.Exec("INSERT INTO schema_migrations (version) VALUES ($1) ON CONFLICT (version) DO NOTHING", version)
 		} else {
 			_, err = tx.Exec("DELETE FROM schema_migrations WHERE version = $1", version)
 		}

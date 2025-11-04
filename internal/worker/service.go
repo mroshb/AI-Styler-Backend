@@ -430,6 +430,15 @@ func (s *Service) workerLoop(ctx context.Context, workerID string) {
 			// Try to get a job
 			job, err := s.jobQueue.DequeueJob(ctx, workerID)
 			if err != nil {
+				errStr := err.Error()
+				// If table doesn't exist, log once and wait longer
+				if strings.Contains(errStr, "worker_jobs") && strings.Contains(errStr, "does not exist") {
+					log.Printf("⚠️  Worker table not found. Please run migrations: go run scripts/migrate/main.go up")
+					log.Printf("   Or run directly: psql -d your_database -f scripts/create_worker_table.sql")
+					// Wait longer when table doesn't exist (30 seconds instead of poll interval)
+					time.Sleep(30 * time.Second)
+					continue
+				}
 				log.Printf("Failed to dequeue job: %v", err)
 				time.Sleep(s.config.PollInterval)
 				continue

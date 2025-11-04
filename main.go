@@ -17,6 +17,7 @@ import (
 	"ai-styler/internal/conversion"
 	"ai-styler/internal/image"
 	"ai-styler/internal/logging"
+	"ai-styler/internal/migration"
 	"ai-styler/internal/monitoring"
 	"ai-styler/internal/notification"
 	"ai-styler/internal/payment"
@@ -68,12 +69,28 @@ func main() {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
+	// Initialize logger (needed for migration logs)
+	logger := logging.NewStructuredLogger(logging.LoggerConfig{
+		Level:  logging.ParseLogLevel(cfg.Monitoring.LogLevel),
+		Format: "json",
+	})
+	logger.Info(context.Background(), "Starting AI Styler backend service", nil)
+
 	// Initialize database connection
 	db, err := initDatabase(cfg)
 	if err != nil {
 		log.Fatalf("failed to initialize database: %v", err)
 	}
 	defer db.Close()
+
+	// Run database migrations if enabled
+	if cfg.Database.AutoMigrate {
+		logger.Info(context.Background(), "Running database migrations...", nil)
+		if err := migration.RunMigrations(db, cfg.Database.MigrationsDir); err != nil {
+			log.Fatalf("failed to run database migrations: %v", err)
+		}
+		logger.Info(context.Background(), "Database migrations completed", nil)
+	}
 
 	// Initialize Redis connection
 	redisClient, err := initRedis(cfg)
@@ -84,13 +101,6 @@ func main() {
 	if redisClient != nil {
 		defer redisClient.Close()
 	}
-
-	// Initialize logger
-	logger := logging.NewStructuredLogger(logging.LoggerConfig{
-		Level:  logging.ParseLogLevel(cfg.Monitoring.LogLevel),
-		Format: "json",
-	})
-	logger.Info(context.Background(), "Starting AI Styler backend service", nil)
 
 	// Initialize monitoring service
 	monitorConfig := monitoring.MonitoringConfig{
@@ -144,12 +154,15 @@ func main() {
 	rateLimiter := auth.NewInMemoryLimiter()
 	tokenService := auth.NewSimpleTokenService()
 
+	// Initialize SMS provider from configuration
+	smsProvider := sms.NewProviderWithParameter(cfg.SMS.Provider, cfg.SMS.APIKey, cfg.SMS.TemplateID, cfg.SMS.ParameterName)
+
 	// Initialize services with dependencies
-	authHandler := auth.NewHandler(authStore, tokenService, rateLimiter, sms.NewProvider("mock", "", 0))
+	authHandler := auth.NewHandler(authStore, tokenService, rateLimiter, smsProvider)
 
 	// Initialize all services
 	_, userHandler := user.WireUserService(db)
-	_, vendorHandler := vendor.WireVendorService(db)
+	_, vendorHandler := vendors.WireVendorService(db)
 	_, conversionHandler := conversion.WireConversionService(db)
 	_, imageHandler := image.WireImageService(db)
 	_, paymentHandler := payment.WirePaymentService(db)

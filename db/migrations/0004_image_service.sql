@@ -4,6 +4,7 @@
 BEGIN;
 
 -- images table - comprehensive image management for all types
+-- Note: Table may already exist from migration 0003, so we alter it if needed
 CREATE TABLE IF NOT EXISTS images (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -30,6 +31,46 @@ CREATE TABLE IF NOT EXISTS images (
     )
 );
 
+-- Alter existing images table to add new columns if they don't exist
+DO $$ 
+BEGIN
+    -- Add user_id column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'images' AND column_name = 'user_id') THEN
+        ALTER TABLE images ADD COLUMN user_id UUID REFERENCES users(id) ON DELETE CASCADE;
+    END IF;
+    
+    -- Add type column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'images' AND column_name = 'type') THEN
+        ALTER TABLE images ADD COLUMN type VARCHAR(20) NOT NULL DEFAULT 'vendor';
+    END IF;
+    
+    -- Add metadata column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'images' AND column_name = 'metadata') THEN
+        ALTER TABLE images ADD COLUMN metadata JSONB DEFAULT '{}';
+    END IF;
+    
+    -- Make vendor_id nullable if it's currently NOT NULL (for backward compatibility)
+    IF EXISTS (SELECT 1 FROM information_schema.columns 
+               WHERE table_name = 'images' AND column_name = 'vendor_id' AND is_nullable = 'NO') THEN
+        ALTER TABLE images ALTER COLUMN vendor_id DROP NOT NULL;
+    END IF;
+    
+    -- Drop old constraint if it exists and add new one
+    IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_image_ownership') THEN
+        ALTER TABLE images DROP CONSTRAINT chk_image_ownership;
+    END IF;
+    
+    -- Add new constraint
+    ALTER TABLE images ADD CONSTRAINT chk_image_ownership CHECK (
+        (type = 'user' AND user_id IS NOT NULL AND vendor_id IS NULL) OR
+        (type = 'vendor' AND vendor_id IS NOT NULL AND user_id IS NULL) OR
+        (type = 'result' AND (user_id IS NOT NULL OR vendor_id IS NOT NULL))
+    );
+END $$;
+
 -- Create indexes for images table
 CREATE INDEX IF NOT EXISTS idx_images_user_id ON images(user_id);
 CREATE INDEX IF NOT EXISTS idx_images_vendor_id ON images(vendor_id);
@@ -46,10 +87,15 @@ CREATE INDEX IF NOT EXISTS idx_images_user_type ON images(user_id, type);
 CREATE INDEX IF NOT EXISTS idx_images_vendor_type ON images(vendor_id, type);
 CREATE INDEX IF NOT EXISTS idx_images_type_public ON images(type, is_public);
 
--- Add trigger for images updated_at
-CREATE TRIGGER trg_images_updated_at
-BEFORE UPDATE ON images
-FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+-- Add trigger for images updated_at (only if it doesn't exist)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_images_updated_at') THEN
+        CREATE TRIGGER trg_images_updated_at
+        BEFORE UPDATE ON images
+        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+    END IF;
+END $$;
 
 -- image_usage_history table - track all image usage
 CREATE TABLE IF NOT EXISTS image_usage_history (

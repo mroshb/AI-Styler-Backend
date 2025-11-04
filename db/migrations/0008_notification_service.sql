@@ -1,6 +1,8 @@
 -- Migration: Notification Service
 -- Description: Creates tables for the notification system
 
+BEGIN;
+
 -- Create notification types enum
 CREATE TYPE notification_type AS ENUM (
     'conversion_started',
@@ -271,7 +273,7 @@ INSERT INTO notification_templates (type, channel, subject, body, variables, is_
 
 ('quota_exhausted', 'sms', '', 
  'Quota exhausted. Upgrade your plan.', 
- ARRAY[], true),
+ ARRAY[]::TEXT[], true),
 
 ('quota_warning', 'sms', '', 
  '{{.remaining}} {{.quotaType}} conversions remaining.', 
@@ -327,3 +329,5 @@ COMMENT ON COLUMN notification_preferences.preferences IS 'Per-notification-type
 COMMENT ON COLUMN notification_preferences.quiet_hours_start IS 'Start time for quiet hours in HH:MM format';
 COMMENT ON COLUMN notification_preferences.quiet_hours_end IS 'End time for quiet hours in HH:MM format';
 COMMENT ON COLUMN notification_templates.variables IS 'List of template variables that can be used in the template';
+
+COMMIT;

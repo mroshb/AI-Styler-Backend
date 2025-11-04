@@ -22,12 +22,14 @@ type Config struct {
 }
 
 type DatabaseConfig struct {
-	Host     string
-	Port     int
-	User     string
-	Password string
-	Name     string
-	SSLMode  string
+	Host          string
+	Port          int
+	User          string
+	Password      string
+	Name          string
+	SSLMode       string
+	AutoMigrate   bool   // Automatically run migrations on startup
+	MigrationsDir string // Path to migrations directory
 }
 
 type ServerConfig struct {
@@ -49,9 +51,10 @@ type RedisConfig struct {
 }
 
 type SMSConfig struct {
-	Provider   string
-	APIKey     string
-	TemplateID int
+	Provider       string
+	APIKey         string
+	TemplateID     int
+	ParameterName  string // Parameter name used in the SMS template (e.g., "Code", "VERIFY")
 }
 
 type SecurityConfig struct {
@@ -103,12 +106,14 @@ func Load() (*Config, error) {
 
 	config := &Config{
 		Database: DatabaseConfig{
-			Host:     getEnv("DB_HOST", "localhost"),
-			Port:     getEnvAsInt("DB_PORT", 5432),
-			User:     getEnv("DB_USER", "postgres"),
-			Password: getEnv("DB_PASSWORD", ""),
-			Name:     getEnv("DB_NAME", "styler"),
-			SSLMode:  getEnv("DB_SSLMODE", "disable"),
+			Host:          getEnv("DB_HOST", "localhost"),
+			Port:          getEnvAsInt("DB_PORT", 5432),
+			User:          getEnv("DB_USER", "postgres"),
+			Password:      getEnv("DB_PASSWORD", "A1212A1212a"),
+			Name:          getEnv("DB_NAME", "styler"),
+			SSLMode:       getEnv("DB_SSLMODE", "disable"),
+			AutoMigrate:   getEnvAsBool("DB_AUTO_MIGRATE", true),
+			MigrationsDir: getEnv("DB_MIGRATIONS_DIR", "db/migrations"),
 		},
 		Server: ServerConfig{
 			HTTPAddr: getEnv("HTTP_ADDR", ":8080"),
@@ -126,9 +131,10 @@ func Load() (*Config, error) {
 			DB:       getEnvAsInt("REDIS_DB", 0),
 		},
 		SMS: SMSConfig{
-			Provider:   getEnv("SMS_PROVIDER", "mock"),
-			APIKey:     getEnv("SMS_API_KEY", ""),
-			TemplateID: getEnvAsInt("SMS_TEMPLATE_ID", 100000),
+			Provider:      getEnv("SMS_PROVIDER", "mock"),
+			APIKey:        getEnv("SMS_API_KEY", ""),
+			TemplateID:    getEnvAsInt("SMS_TEMPLATE_ID", 100000),
+			ParameterName: getEnv("SMS_PARAMETER_NAME", "Code"),
 		},
 		Security: SecurityConfig{
 			BCryptCost:        getEnvAsInt("BCRYPT_COST", 12),
