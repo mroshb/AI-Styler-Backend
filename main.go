@@ -158,9 +158,12 @@ func main() {
 	jwtSigner := security.NewProductionJWTSigner(cfg.JWT.Secret, "ai-styler")
 	sessionStore := auth.NewPostgresSessionStore(db)
 	accessTTL := cfg.JWT.AccessTTL
+	if accessTTL == 0 {
+		accessTTL = 30 * 24 * time.Hour // Default: 30 days
+	}
 	refreshTTL := cfg.JWT.RefreshTTL
 	if refreshTTL == 0 {
-		refreshTTL = 30 * 24 * time.Hour // Default: 30 days (720 hours)
+		refreshTTL = 90 * 24 * time.Hour // Default: 90 days
 	}
 	productionTokenService := auth.NewProductionTokenService(jwtSigner, sessionStore, accessTTL, refreshTTL)
 	tokenService := auth.NewTokenServiceAdapter(productionTokenService)

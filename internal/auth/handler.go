@@ -328,7 +328,7 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 		common.WriteError(w, http.StatusUnauthorized, "unauthorized", fmt.Sprintf("invalid refresh: %v", err), nil)
 		return
 	}
-	common.WriteJSON(w, http.StatusOK, refreshResp{AccessToken: at, AccessTokenExpiresIn: 900, RefreshToken: rt, RefreshTokenExpiresAt: expAt.Format(time.RFC3339)})
+	common.WriteJSON(w, http.StatusOK, refreshResp{AccessToken: at, AccessTokenExpiresIn: int(h.accessTTL.Seconds()), RefreshToken: rt, RefreshTokenExpiresAt: expAt.Format(time.RFC3339)})
 }
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
