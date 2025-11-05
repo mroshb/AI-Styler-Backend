@@ -10,6 +10,8 @@ import (
 
 	"ai-styler/internal/conversion"
 	"ai-styler/internal/image"
+
+	"github.com/google/uuid"
 )
 
 // Service implements the WorkerService interface
@@ -198,28 +200,7 @@ func (s *Service) ProcessJob(ctx context.Context, job *WorkerJob) error {
 	if err != nil {
 		log.Printf("Job %s failed after %v: %v", job.ID, processingTime, err)
 
-		// Check if we should retry
-		if s.retryHandler.ShouldRetry(ctx, job, err) && job.RetryCount < job.MaxRetries {
-			// Increment retry count and reschedule
-			job.RetryCount++
-			job.Status = JobStatusPending
-			job.ErrorMessage = err.Error()
-			job.UpdatedAt = time.Now()
-
-			// Calculate retry delay
-			delay := s.retryHandler.GetRetryDelay(ctx, job)
-
-			// Reschedule job with delay
-			go func() {
-				time.Sleep(delay)
-				if err := s.jobQueue.EnqueueJob(ctx, job); err != nil {
-					log.Printf("Failed to reschedule job %s: %v", job.ID, err)
-				}
-			}()
-
-			log.Printf("Job %s scheduled for retry %d/%d in %v", job.ID, job.RetryCount, job.MaxRetries, delay)
-			return nil
-		}
+		// No retry - mark job as failed immediately
 
 		// Mark job as failed
 		if err := s.jobQueue.FailJob(ctx, job.ID, err.Error()); err != nil {
@@ -276,45 +257,65 @@ func (s *Service) ProcessJob(ctx context.Context, job *WorkerJob) error {
 
 // processImageConversion processes an image conversion job with comprehensive error handling
 func (s *Service) processImageConversion(ctx context.Context, job *WorkerJob) (interface{}, error) {
+	log.Printf("Starting image conversion for job %s, conversion %s", job.ID, job.ConversionID)
+
 	// Get conversion details
 	conversion, err := s.conversionStore.GetConversion(ctx, job.ConversionID)
 	if err != nil {
+		log.Printf("Failed to get conversion %s: %v", job.ConversionID, err)
 		return nil, fmt.Errorf("failed to get conversion: %w", err)
 	}
+	log.Printf("Retrieved conversion: userImageID=%s, clothImageID=%s", conversion.UserImageID, conversion.ClothImageID)
 
 	// Get user image
 	userImage, err := s.imageStore.GetImage(ctx, conversion.UserImageID)
 	if err != nil {
+		log.Printf("Failed to get user image %s: %v", conversion.UserImageID, err)
 		return nil, fmt.Errorf("failed to get user image: %w", err)
 	}
+	log.Printf("Retrieved user image: URL=%s", userImage.OriginalURL)
 
 	// Get cloth image
 	clothImage, err := s.imageStore.GetImage(ctx, conversion.ClothImageID)
 	if err != nil {
+		log.Printf("Failed to get cloth image %s: %v", conversion.ClothImageID, err)
 		return nil, fmt.Errorf("failed to get cloth image: %w", err)
 	}
+	log.Printf("Retrieved cloth image: URL=%s", clothImage.OriginalURL)
 
 	// Download images with retry logic
+	log.Printf("Downloading user image from %s", userImage.OriginalURL)
 	userImageData, err := s.downloadImageWithRetry(ctx, userImage.OriginalURL, "user image")
 	if err != nil {
+		log.Printf("Failed to download user image: %v", err)
 		return nil, fmt.Errorf("failed to download user image: %w", err)
 	}
+	log.Printf("Downloaded user image: %d bytes", len(userImageData))
 
+	log.Printf("Downloading cloth image from %s", clothImage.OriginalURL)
 	clothImageData, err := s.downloadImageWithRetry(ctx, clothImage.OriginalURL, "cloth image")
 	if err != nil {
+		log.Printf("Failed to download cloth image: %v", err)
 		return nil, fmt.Errorf("failed to download cloth image: %w", err)
 	}
+	log.Printf("Downloaded cloth image: %d bytes", len(clothImageData))
 
 	// Validate downloaded images
+	log.Printf("Validating downloaded images")
 	if err := s.validateImages(ctx, userImageData, clothImageData); err != nil {
+		log.Printf("Image validation failed: %v", err)
 		return nil, fmt.Errorf("image validation failed: %w", err)
 	}
+	log.Printf("Images validated successfully")
 
 	// Call Gemini API for conversion with timeout
+	log.Printf("Calling Gemini API for image conversion...")
 	resultImageData, err := s.convertImageWithTimeout(ctx, userImageData, clothImageData, job.Payload.Options)
 	if err != nil {
+		log.Printf("Gemini API conversion failed: %v", err)
 		return nil, fmt.Errorf("failed to convert image with Gemini: %w", err)
 	}
+	log.Printf("Gemini API conversion successful: result image size=%d bytes", len(resultImageData))
 
 	// Process the result image
 	processedData, width, height, err := s.imageProcessor.ProcessImage(ctx, resultImageData, "converted_"+userImage.FileName)
@@ -575,7 +576,7 @@ func getDefaultConfig() *WorkerConfig {
 		MaxWorkers:        DefaultMaxWorkers,
 		JobTimeout:        DefaultJobTimeout,
 		RetryDelay:        DefaultRetryDelay,
-		MaxRetries:        DefaultMaxRetries,
+		MaxRetries:        1,
 		PollInterval:      DefaultPollInterval,
 		CleanupInterval:   DefaultCleanupInterval,
 		HealthCheckPort:   DefaultHealthCheckPort,
@@ -589,65 +590,25 @@ func generateWorkerID() string {
 }
 
 func generateJobID() string {
-	return fmt.Sprintf("job-%d", time.Now().UnixNano())
+	return uuid.New().String()
 }
 
-// downloadImageWithRetry downloads an image with retry logic
+// downloadImageWithRetry downloads an image (single attempt only)
 func (s *Service) downloadImageWithRetry(ctx context.Context, url, description string) ([]byte, error) {
-	maxRetries := 3
-	var lastErr error
-
-	for attempt := 0; attempt < maxRetries; attempt++ {
-		data, err := s.fileStorage.GetFile(ctx, url)
-		if err == nil {
-			return data, nil
-		}
-
-		lastErr = err
-		log.Printf("Failed to download %s (attempt %d/%d): %v", description, attempt+1, maxRetries, err)
-
-		// Check if error is retryable
-		if !s.isRetryableError(err) {
-			return nil, fmt.Errorf("non-retryable error downloading %s: %w", description, err)
-		}
-
-		// Wait before retry
-		if attempt < maxRetries-1 {
-			delay := time.Duration(1<<uint(attempt)) * time.Second
-			time.Sleep(delay)
-		}
+	data, err := s.fileStorage.GetFile(ctx, url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to download %s: %w", description, err)
 	}
-
-	return nil, fmt.Errorf("failed to download %s after %d attempts: %w", description, maxRetries, lastErr)
+	return data, nil
 }
 
-// uploadFileWithRetry uploads a file with retry logic
+// uploadFileWithRetry uploads a file (single attempt only)
 func (s *Service) uploadFileWithRetry(ctx context.Context, data []byte, filename, path string) (string, error) {
-	maxRetries := 3
-	var lastErr error
-
-	for attempt := 0; attempt < maxRetries; attempt++ {
-		url, err := s.fileStorage.UploadFile(ctx, data, filename, path)
-		if err == nil {
-			return url, nil
-		}
-
-		lastErr = err
-		log.Printf("Failed to upload file %s (attempt %d/%d): %v", filename, attempt+1, maxRetries, err)
-
-		// Check if error is retryable
-		if !s.isRetryableError(err) {
-			return "", fmt.Errorf("non-retryable error uploading %s: %w", filename, err)
-		}
-
-		// Wait before retry
-		if attempt < maxRetries-1 {
-			delay := time.Duration(1<<uint(attempt)) * time.Second
-			time.Sleep(delay)
-		}
+	url, err := s.fileStorage.UploadFile(ctx, data, filename, path)
+	if err != nil {
+		return "", fmt.Errorf("failed to upload %s: %w", filename, err)
 	}
-
-	return "", fmt.Errorf("failed to upload %s after %d attempts: %w", filename, maxRetries, lastErr)
+	return url, nil
 }
 
 // validateImages validates downloaded images

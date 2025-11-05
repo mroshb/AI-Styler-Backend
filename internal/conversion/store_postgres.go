@@ -35,14 +35,14 @@ func (s *postgresStore) CheckUserQuota(ctx context.Context, userID string) (Quot
 }
 
 // CreateConversion creates a new conversion
-func (s *postgresStore) CreateConversion(ctx context.Context, userID, userImageID, clothImageID string) (string, error) {
+func (s *postgresStore) CreateConversion(ctx context.Context, userID, userImageID, clothImageID, styleName string) (string, error) {
 	query := `
-		INSERT INTO conversions (user_id, user_image_id, cloth_image_id, status)
-		VALUES ($1, $2, $3, 'pending')
+		INSERT INTO conversions (user_id, user_image_id, cloth_image_id, status, style_name)
+		VALUES ($1, $2, $3, 'pending', $4)
 		RETURNING id`
 
 	var conversionID string
-	err := s.db.QueryRowContext(ctx, query, userID, userImageID, clothImageID).Scan(&conversionID)
+	err := s.db.QueryRowContext(ctx, query, userID, userImageID, clothImageID, styleName).Scan(&conversionID)
 	if err != nil {
 		return "", fmt.Errorf("failed to create conversion: %w", err)
 	}

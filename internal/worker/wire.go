@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"time"
 
+	"ai-styler/internal/config"
 	"ai-styler/internal/conversion"
 	"ai-styler/internal/image"
 	"ai-styler/internal/notification"
@@ -11,13 +12,13 @@ import (
 )
 
 // WireWorkerService creates a worker service with all dependencies
-func WireWorkerService(db *sql.DB) (*Service, *Handler) {
-	// Create configuration
-	config := &WorkerConfig{
+func WireWorkerService(db *sql.DB, cfg *config.Config) (*Service, *Handler) {
+	// Create worker configuration
+	workerConfig := &WorkerConfig{
 		MaxWorkers:        5,
 		JobTimeout:        10 * time.Minute,
 		RetryDelay:        5 * time.Second,
-		MaxRetries:        3,
+		MaxRetries:        1,
 		PollInterval:      1 * time.Second,
 		CleanupInterval:   1 * time.Hour,
 		HealthCheckPort:   8082,
@@ -31,11 +32,12 @@ func WireWorkerService(db *sql.DB) (*Service, *Handler) {
 	// Create image processor
 	imageProcessor := image.NewImageProcessor()
 
-	// Create file storage
+	// Create file storage using config
+	backupPath := cfg.Storage.StoragePath + "/backup"
 	fileStorage, err := storage.NewStorageService(storage.StorageConfig{
-		BasePath:     "./uploads",
-		BackupPath:   "./backups",
-		SignedURLKey: "default-key-change-in-production",
+		BasePath:     cfg.Storage.StoragePath,
+		BackupPath:   backupPath,
+		SignedURLKey: "default-key-change-in-production", // TODO: Move to config
 	})
 	if err != nil {
 		panic(err)
@@ -45,13 +47,15 @@ func WireWorkerService(db *sql.DB) (*Service, *Handler) {
 	conversionStore := conversion.NewStore(db)
 	imageStore := image.NewDBStore(db)
 
-	// Create Gemini API client
+	// Create Gemini API client using config
 	geminiConfig := &GeminiConfig{
-		APIKey:     "your-gemini-api-key",
-		BaseURL:    "https://generativelanguage.googleapis.com",
-		Model:      "gemini-1.5-pro",
-		MaxRetries: 3,
-		Timeout:    60,
+		APIKey:               cfg.Gemini.APIKey,
+		BaseURL:              cfg.Gemini.BaseURL,
+		Model:                cfg.Gemini.Model,
+		MaxRetries:           cfg.Gemini.MaxRetries,
+		Timeout:              cfg.Gemini.Timeout,
+		PreprocessNoiseLevel: cfg.Gemini.PreprocessNoiseLevel,
+		PreprocessJpegQuality: cfg.Gemini.PreprocessJpegQuality,
 	}
 	geminiAPI := NewGeminiClient(geminiConfig)
 
@@ -69,7 +73,7 @@ func WireWorkerService(db *sql.DB) (*Service, *Handler) {
 
 	// Create service
 	service := NewService(
-		config,
+		workerConfig,
 		jobQueue,
 		imageProcessor,
 		fileStorage,
@@ -95,7 +99,7 @@ func WireWorkerServiceWithMocks() (*Service, *Handler) {
 		MaxWorkers:        2,
 		JobTimeout:        5 * time.Minute,
 		RetryDelay:        1 * time.Second,
-		MaxRetries:        2,
+		MaxRetries:        1,
 		PollInterval:      500 * time.Millisecond,
 		CleanupInterval:   30 * time.Minute,
 		HealthCheckPort:   8082,

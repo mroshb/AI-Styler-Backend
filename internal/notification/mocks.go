@@ -243,7 +243,8 @@ func NewMockRetryHandler() RetryHandler {
 }
 
 func (m *MockRetryHandler) ShouldRetry(ctx context.Context, delivery NotificationDelivery, err error) bool {
-	return delivery.RetryCount < 3
+	// No retries - always return false
+	return false
 }
 
 func (m *MockRetryHandler) GetRetryDelay(ctx context.Context, delivery NotificationDelivery) int64 {

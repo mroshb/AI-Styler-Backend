@@ -811,26 +811,9 @@ func (s *Service) scheduleForLater(ctx context.Context, notification Notificatio
 }
 
 func (s *Service) handleDeliveryFailure(ctx context.Context, delivery NotificationDelivery, err error) {
-	// Check if should retry
-	if s.retryHandler.ShouldRetry(ctx, delivery, err) {
-		// Schedule retry
-		retryDelay := s.retryHandler.GetRetryDelay(ctx, delivery)
-		nextRetryAt := time.Now().Add(time.Duration(retryDelay) * time.Millisecond)
-
-		updates := map[string]interface{}{
-			"status":       StatusFailed,
-			"errorMessage": err.Error(),
-			"nextRetryAt":  nextRetryAt,
-		}
-
-		if updateErr := s.store.UpdateDelivery(ctx, delivery.ID, updates); updateErr != nil {
-			log.Printf("Failed to update delivery for retry: %v", updateErr)
-		}
-	} else {
-		// Mark as permanently failed
-		errorMsg := err.Error()
-		s.updateDeliveryStatus(ctx, delivery.ID, StatusFailed, &errorMsg)
-	}
+	// No retry - mark as permanently failed immediately
+	errorMsg := err.Error()
+	s.updateDeliveryStatus(ctx, delivery.ID, StatusFailed, &errorMsg)
 }
 
 func (s *Service) updateDeliveryStatus(ctx context.Context, deliveryID string, status NotificationStatus, errorMessage *string) {

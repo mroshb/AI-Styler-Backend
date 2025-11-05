@@ -22,6 +22,7 @@ import (
 	"ai-styler/internal/notification"
 	"ai-styler/internal/payment"
 	"ai-styler/internal/route"
+	"ai-styler/internal/security"
 	"ai-styler/internal/share"
 	"ai-styler/internal/sms"
 	"ai-styler/internal/storage"
@@ -152,7 +153,17 @@ func main() {
 
 	// Initialize security components
 	rateLimiter := auth.NewInMemoryLimiter()
-	tokenService := auth.NewSimpleTokenService()
+	
+	// Use ProductionTokenService with PostgreSQL session store for persistent sessions
+	jwtSigner := security.NewProductionJWTSigner(cfg.JWT.Secret, "ai-styler")
+	sessionStore := auth.NewPostgresSessionStore(db)
+	accessTTL := cfg.JWT.AccessTTL
+	refreshTTL := cfg.JWT.RefreshTTL
+	if refreshTTL == 0 {
+		refreshTTL = 30 * 24 * time.Hour // Default: 30 days (720 hours)
+	}
+	productionTokenService := auth.NewProductionTokenService(jwtSigner, sessionStore, accessTTL, refreshTTL)
+	tokenService := auth.NewTokenServiceAdapter(productionTokenService)
 
 	// Initialize SMS provider from configuration
 	smsProvider := sms.NewProviderWithParameter(cfg.SMS.Provider, cfg.SMS.APIKey, cfg.SMS.TemplateID, cfg.SMS.ParameterName)
@@ -170,8 +181,8 @@ func main() {
 	_, adminHandler := admin.WireAdminService(db)
 	_, notificationHandler := notification.WireNotificationService(db)
 
-	// Initialize worker service
-	workerService, _ := worker.WireWorkerService(db)
+	// Initialize worker service with config
+	workerService, _ := worker.WireWorkerService(db, cfg)
 
 	// Set Gin mode
 	gin.SetMode(cfg.Server.GinMode)

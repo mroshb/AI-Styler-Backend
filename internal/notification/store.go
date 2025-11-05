@@ -3,6 +3,7 @@ package notification
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 
 	"github.com/lib/pq"
@@ -31,13 +32,23 @@ func (s Store) CreateNotification(ctx context.Context, notification Notification
 		channels[i] = string(channel)
 	}
 
+	// Convert data map to JSONB
+	var dataJSON []byte
+	if notification.Data != nil {
+		var err error
+		dataJSON, err = json.Marshal(notification.Data)
+		if err != nil {
+			return fmt.Errorf("failed to marshal notification data: %w", err)
+		}
+	}
+
 	_, err := s.db.ExecContext(ctx, query,
 		notification.ID,
 		notification.UserID,
 		string(notification.Type),
 		notification.Title,
 		notification.Message,
-		pq.Array(notification.Data),
+		dataJSON, // JSONB column
 		pq.Array(channels),
 		string(notification.Priority),
 		string(notification.Status),
@@ -60,7 +71,8 @@ func (s Store) GetNotification(ctx context.Context, notificationID string) (Noti
 	var notification Notification
 	var userID sql.NullString
 	var scheduledFor, sentAt, readAt, expiresAt sql.NullTime
-	var data, channels []string
+	var dataJSON []byte
+	var channels []string
 
 	err := s.db.QueryRowContext(ctx, query, notificationID).Scan(
 		&notification.ID,
@@ -68,7 +80,7 @@ func (s Store) GetNotification(ctx context.Context, notificationID string) (Noti
 		&notification.Type,
 		&notification.Title,
 		&notification.Message,
-		pq.Array(&data),
+		&dataJSON, // JSONB column
 		pq.Array(&channels),
 		&notification.Priority,
 		&notification.Status,
@@ -105,12 +117,13 @@ func (s Store) GetNotification(ctx context.Context, notificationID string) (Noti
 		notification.Channels[i] = NotificationChannel(channel)
 	}
 
-	// Convert data to map
-	notification.Data = make(map[string]interface{})
-	for i := 0; i < len(data); i += 2 {
-		if i+1 < len(data) {
-			notification.Data[data[i]] = data[i+1]
+	// Convert JSONB data to map
+	if len(dataJSON) > 0 {
+		if err := json.Unmarshal(dataJSON, &notification.Data); err != nil {
+			return Notification{}, fmt.Errorf("failed to unmarshal notification data: %w", err)
 		}
+	} else {
+	notification.Data = make(map[string]interface{})
 	}
 
 	return notification, nil
@@ -191,7 +204,8 @@ func (s Store) ListNotifications(ctx context.Context, req NotificationListReques
 		var notification Notification
 		var userID sql.NullString
 		var scheduledFor, sentAt, readAt, expiresAt sql.NullTime
-		var data, channels []string
+		var dataJSON []byte
+		var channels []string
 
 		err := rows.Scan(
 			&notification.ID,
@@ -199,7 +213,7 @@ func (s Store) ListNotifications(ctx context.Context, req NotificationListReques
 			&notification.Type,
 			&notification.Title,
 			&notification.Message,
-			pq.Array(&data),
+			&dataJSON, // JSONB column
 			pq.Array(&channels),
 			&notification.Priority,
 			&notification.Status,
@@ -236,12 +250,13 @@ func (s Store) ListNotifications(ctx context.Context, req NotificationListReques
 			notification.Channels[i] = NotificationChannel(channel)
 		}
 
-		// Convert data to map
-		notification.Data = make(map[string]interface{})
-		for i := 0; i < len(data); i += 2 {
-			if i+1 < len(data) {
-				notification.Data[data[i]] = data[i+1]
+		// Convert JSONB data to map
+		if len(dataJSON) > 0 {
+			if err := json.Unmarshal(dataJSON, &notification.Data); err != nil {
+				return NotificationListResponse{}, fmt.Errorf("failed to unmarshal notification data: %w", err)
 			}
+		} else {
+		notification.Data = make(map[string]interface{})
 		}
 
 		notifications = append(notifications, notification)

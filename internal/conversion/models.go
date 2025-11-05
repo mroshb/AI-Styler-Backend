@@ -1,6 +1,7 @@
 package conversion
 
 import (
+	"encoding/json"
 	"time"
 )
 
@@ -21,8 +22,75 @@ type Conversion struct {
 
 // ConversionRequest represents the request to create a new conversion
 type ConversionRequest struct {
-	UserImageID  string `json:"userImageId" binding:"required"`
-	ClothImageID string `json:"clothImageId" binding:"required"`
+	UserImageID      string `json:"userImageId"`      // camelCase (preferred)
+	UserImageIDSnake string `json:"user_image_id"`    // snake_case (backward compatibility)
+	ClothImageID     string `json:"clothImageId"`     // camelCase (preferred)
+	ClothImageIDSnake string `json:"cloth_image_id"`  // snake_case (backward compatibility)
+	StyleName        string `json:"styleName,omitempty"`
+	StyleNameSnake   string `json:"style_name,omitempty"`
+}
+
+// UnmarshalJSON custom unmarshaling to support both camelCase and snake_case
+func (r *ConversionRequest) UnmarshalJSON(data []byte) error {
+	// Define a temporary struct with both formats
+	type Alias struct {
+		UserImageID      string `json:"userImageId"`
+		UserImageIDSnake string `json:"user_image_id"`
+		ClothImageID     string `json:"clothImageId"`
+		ClothImageIDSnake string `json:"cloth_image_id"`
+		StyleName        string `json:"styleName"`
+		StyleNameSnake   string `json:"style_name"`
+	}
+	
+	var temp Alias
+	if err := json.Unmarshal(data, &temp); err != nil {
+		return err
+	}
+	
+	// Use whichever field was provided
+	if temp.UserImageID != "" {
+		r.UserImageID = temp.UserImageID
+	} else {
+		r.UserImageID = temp.UserImageIDSnake
+	}
+	
+	if temp.ClothImageID != "" {
+		r.ClothImageID = temp.ClothImageID
+	} else {
+		r.ClothImageID = temp.ClothImageIDSnake
+	}
+	
+	if temp.StyleName != "" {
+		r.StyleName = temp.StyleName
+	} else {
+		r.StyleName = temp.StyleNameSnake
+	}
+	
+	return nil
+}
+
+// GetUserImageID returns the user image ID from whichever field was provided
+func (r *ConversionRequest) GetUserImageID() string {
+	if r.UserImageID != "" {
+		return r.UserImageID
+	}
+	return r.UserImageIDSnake
+}
+
+// GetClothImageID returns the cloth image ID from whichever field was provided
+func (r *ConversionRequest) GetClothImageID() string {
+	if r.ClothImageID != "" {
+		return r.ClothImageID
+	}
+	return r.ClothImageIDSnake
+}
+
+// GetStyleName returns the style name from whichever field was provided
+func (r *ConversionRequest) GetStyleName() string {
+	if r.StyleName != "" {
+		return r.StyleName
+	}
+	return r.StyleNameSnake
 }
 
 // ConversionResponse represents the response for conversion operations

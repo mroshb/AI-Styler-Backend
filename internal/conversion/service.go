@@ -57,13 +57,24 @@ func (s *Service) CreateConversion(ctx context.Context, userID string, req Conve
 		return ConversionResponse{}, fmt.Errorf("invalid user image access: %w", err)
 	}
 
-	// Validate cloth image exists and is public
+	// Validate cloth image exists and is accessible
+	// Cloth image can be:
+	// 1. Public image (is_public = true)
+	// 2. Vendor image (type = 'vendor')
+	// 3. User's own image (belongs to the same user)
 	clothImage, err := s.imageService.GetImage(ctx, req.ClothImageID)
 	if err != nil {
 		return ConversionResponse{}, fmt.Errorf("invalid cloth image: %w", err)
 	}
-	if !clothImage.IsPublic {
-		return ConversionResponse{}, fmt.Errorf("cloth image is not public")
+	
+	// Check if cloth image belongs to the user (allow using own images)
+	isOwnImage := (clothImage.UserID != "" && clothImage.UserID == userID) ||
+	              (clothImage.VendorID != "" && clothImage.VendorID == userID)
+	
+	// Allow if: own image, public, or vendor type
+	// Note: SQL function will also validate this, but we check early for better error messages
+	if !isOwnImage && !clothImage.IsPublic && clothImage.Type != "vendor" {
+		return ConversionResponse{}, fmt.Errorf("cloth image is not accessible: must be public, vendor image, or your own image")
 	}
 
 	// Check user quota and create conversion (handled by database function)
@@ -76,7 +87,8 @@ func (s *Service) CreateConversion(ctx context.Context, userID string, req Conve
 	}
 
 	// Create conversion (this will also update quota counters)
-	conversionID, err := s.store.CreateConversion(ctx, userID, req.UserImageID, req.ClothImageID)
+	styleName := req.GetStyleName()
+	conversionID, err := s.store.CreateConversion(ctx, userID, req.UserImageID, req.ClothImageID, styleName)
 	if err != nil {
 		return ConversionResponse{}, fmt.Errorf("failed to create conversion: %w", err)
 	}

@@ -1,6 +1,7 @@
 package image
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"image"
@@ -25,7 +26,7 @@ func NewImageProcessor() *ImageProcessorImpl {
 // ProcessImage processes an image and returns processed data with dimensions
 func (p *ImageProcessorImpl) ProcessImage(ctx context.Context, data []byte, fileName string) ([]byte, int, int, error) {
 	// Decode image to get dimensions
-	img, _, err := image.Decode(strings.NewReader(string(data)))
+	img, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to decode image: %w", err)
 	}
@@ -42,7 +43,7 @@ func (p *ImageProcessorImpl) ProcessImage(ctx context.Context, data []byte, file
 // GenerateThumbnail generates a thumbnail of the specified dimensions
 func (p *ImageProcessorImpl) GenerateThumbnail(ctx context.Context, data []byte, fileName string, width, height int) ([]byte, error) {
 	// Decode image
-	img, _, err := image.Decode(strings.NewReader(string(data)))
+	img, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode image: %w", err)
 	}
@@ -91,7 +92,7 @@ func (p *ImageProcessorImpl) GenerateThumbnail(ctx context.Context, data []byte,
 // ResizeImage resizes an image to the specified dimensions
 func (p *ImageProcessorImpl) ResizeImage(ctx context.Context, data []byte, fileName string, width, height int) ([]byte, error) {
 	// Decode image
-	img, _, err := image.Decode(strings.NewReader(string(data)))
+	img, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode image: %w", err)
 	}
@@ -150,7 +151,7 @@ func (p *ImageProcessorImpl) ValidateImage(ctx context.Context, data []byte, fil
 	}
 
 	// Try to decode the image
-	_, _, err := image.Decode(strings.NewReader(string(data)))
+	_, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
 		return fmt.Errorf("invalid image format: %w", err)
 	}
@@ -160,7 +161,7 @@ func (p *ImageProcessorImpl) ValidateImage(ctx context.Context, data []byte, fil
 
 // GetImageDimensions gets image dimensions
 func (p *ImageProcessorImpl) GetImageDimensions(ctx context.Context, data []byte) (int, int, error) {
-	img, _, err := image.Decode(strings.NewReader(string(data)))
+	img, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to decode image: %w", err)
 	}

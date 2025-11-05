@@ -2,8 +2,6 @@ package config
 
 import (
 	"fmt"
-	"os"
-	"strconv"
 	"time"
 
 	"github.com/go-redis/redis/v8"
@@ -219,12 +217,3 @@ func (c *ProductionConfig) GetGinMode() string {
 	return c.Server.GinMode
 }
 
-// Helper function to get environment variable as float
-func getEnvAsFloat(key string, defaultValue float64) float64 {
-	if value := os.Getenv(key); value != "" {
-		if floatValue, err := strconv.ParseFloat(value, 64); err == nil {
-			return floatValue
-		}
-	}
-	return defaultValue
-}

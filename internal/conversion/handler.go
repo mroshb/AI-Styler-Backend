@@ -2,6 +2,7 @@ package conversion
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -33,18 +34,31 @@ func (h *Handler) CreateConversion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate required fields
-	if req.UserImageID == "" {
-		common.WriteError(w, http.StatusBadRequest, "invalid_request", "userImageId is required", nil)
+	// Validate required fields using helper methods that support both formats
+	userImageID := req.GetUserImageID()
+	clothImageID := req.GetClothImageID()
+	
+	if userImageID == "" {
+		common.WriteError(w, http.StatusBadRequest, "invalid_request", "userImageId or user_image_id is required", nil)
 		return
 	}
-	if req.ClothImageID == "" {
-		common.WriteError(w, http.StatusBadRequest, "invalid_request", "clothImageId is required", nil)
+	if clothImageID == "" {
+		common.WriteError(w, http.StatusBadRequest, "invalid_request", "clothImageId or cloth_image_id is required", nil)
 		return
 	}
 
-	conversion, err := h.service.CreateConversion(r.Context(), userID, req)
+	// Create a normalized request with the extracted values
+	normalizedReq := ConversionRequest{
+		UserImageID:  userImageID,
+		ClothImageID: clothImageID,
+		StyleName:    req.GetStyleName(),
+	}
+
+	conversion, err := h.service.CreateConversion(r.Context(), userID, normalizedReq)
 	if err != nil {
+		// Log the error for debugging
+		fmt.Printf("CreateConversion error: %v\n", err)
+		
 		if strings.Contains(err.Error(), "quota exceeded") {
 			common.WriteError(w, http.StatusForbidden, "quota_exceeded", "You have exceeded your free conversion limit. Please upgrade your plan to continue.", map[string]interface{}{
 				"remaining_free":   0,
@@ -57,7 +71,7 @@ func (h *Handler) CreateConversion(w http.ResponseWriter, r *http.Request) {
 			common.WriteError(w, http.StatusTooManyRequests, "rate_limit_exceeded", err.Error(), nil)
 			return
 		}
-		if strings.Contains(err.Error(), "invalid") || strings.Contains(err.Error(), "not found") {
+		if strings.Contains(err.Error(), "invalid") || strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "not accessible") {
 			common.WriteError(w, http.StatusBadRequest, "invalid_request", err.Error(), nil)
 			return
 		}
@@ -298,14 +312,31 @@ func (h *Handler) GetConversionMetrics(w http.ResponseWriter, r *http.Request) {
 // Helper functions - now using common package
 
 // getPathParam extracts a path parameter from the request
+// First tries to get it from context (set by GinWrap), then falls back to parsing the URL
 func getPathParam(r *http.Request, param string) string {
-	// This is a simplified implementation
-	// In a real implementation, you would use a router that provides path parameters
-	// For now, we'll extract from the URL path
+	// First, try to get from context (set by GinWrap)
+	if val := r.Context().Value("path_param_" + param); val != nil {
+		if str, ok := val.(string); ok {
+			return str
+		}
+	}
+	
+	// Fallback: parse from URL path
 	path := r.URL.Path
-	parts := strings.Split(path, "/")
+	parts := strings.Split(strings.Trim(path, "/"), "/")
 
-	// Find the parameter position and return the next part
+	// For routes like /api/conversion/:id or /api/conversion/:id/status
+	// We look for "conversion" and return the segment immediately after it
+	if param == "id" {
+		for i, part := range parts {
+			if part == "conversion" && i+1 < len(parts) {
+				// Return the next segment (which is the ID)
+				return parts[i+1]
+			}
+		}
+	}
+	
+	// Fallback: look for the parameter name directly (for other routes)
 	for i, part := range parts {
 		if part == param && i+1 < len(parts) {
 			return parts[i+1]

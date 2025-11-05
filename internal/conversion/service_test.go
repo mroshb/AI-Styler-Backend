@@ -20,7 +20,7 @@ func newMockStore() *mockStore {
 	}
 }
 
-func (m *mockStore) CreateConversion(ctx context.Context, userID, userImageID, clothImageID string) (string, error) {
+func (m *mockStore) CreateConversion(ctx context.Context, userID, userImageID, clothImageID, styleName string) (string, error) {
 	conversionID := "test-conversion-id"
 	conversion := Conversion{
 		ID:           conversionID,

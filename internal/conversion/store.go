@@ -17,13 +17,13 @@ func NewStore(db *sql.DB) Store {
 }
 
 // CreateConversion creates a new conversion request
-func (s *store) CreateConversion(ctx context.Context, userID, userImageID, clothImageID string) (string, error) {
+func (s *store) CreateConversion(ctx context.Context, userID, userImageID, clothImageID, styleName string) (string, error) {
 	query := `
-		SELECT create_conversion($1, $2, $3)
+		SELECT create_conversion($1, NULL, $2, $3, 'free', $4)
 	`
 
 	var conversionID string
-	err := s.db.QueryRowContext(ctx, query, userID, userImageID, clothImageID).Scan(&conversionID)
+	err := s.db.QueryRowContext(ctx, query, userID, userImageID, clothImageID, styleName).Scan(&conversionID)
 	if err != nil {
 		return "", fmt.Errorf("failed to create conversion: %w", err)
 	}

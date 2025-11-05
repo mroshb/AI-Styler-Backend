@@ -38,7 +38,7 @@ type RetryService struct {
 // NewRetryService creates a new retry service
 func NewRetryService(config RetryConfig) *RetryService {
 	if config.MaxRetries == 0 {
-		config.MaxRetries = 3
+		config.MaxRetries = 1
 	}
 	if config.BaseDelay == 0 {
 		config.BaseDelay = time.Second
@@ -82,117 +82,31 @@ type RetryFunc func(ctx context.Context) error
 // RetryWithResultFunc represents a function that returns a result and can be retried
 type RetryWithResultFunc func(ctx context.Context) (interface{}, error)
 
-// Retry executes a function with retry logic
+// Retry executes a function (single attempt only)
 func (r *RetryService) Retry(ctx context.Context, fn RetryFunc) error {
-	var lastErr error
-
-	for attempt := 0; attempt < r.config.MaxRetries; attempt++ {
-		err := fn(ctx)
-		if err == nil {
-			return nil
-		}
-
-		lastErr = err
-
-		// Check if error is retryable
-		if !r.isRetryableError(err) {
-			return fmt.Errorf("non-retryable error: %w", err)
-		}
-
-		// Don't wait after the last attempt
-		if attempt == r.config.MaxRetries-1 {
-			break
-		}
-
-		// Calculate delay
-		delay := r.calculateDelay(attempt)
-
-		// Wait with context cancellation support
-		select {
-		case <-ctx.Done():
-			return fmt.Errorf("context cancelled: %w", ctx.Err())
-		case <-time.After(delay):
-			// Continue to next attempt
-		}
+	err := fn(ctx)
+	if err != nil {
+		return fmt.Errorf("operation failed: %w", err)
 	}
-
-	return fmt.Errorf("failed after %d attempts: %w", r.config.MaxRetries, lastErr)
+	return nil
 }
 
-// RetryWithResult executes a function with retry logic and returns the result
+// RetryWithResult executes a function and returns the result (single attempt only)
 func (r *RetryService) RetryWithResult(ctx context.Context, fn RetryWithResultFunc) (interface{}, error) {
-	var result interface{}
-	var lastErr error
-
-	for attempt := 0; attempt < r.config.MaxRetries; attempt++ {
-		res, err := fn(ctx)
-		if err == nil {
-			return res, nil
-		}
-
-		result = res
-		lastErr = err
-
-		// Check if error is retryable
-		if !r.isRetryableError(err) {
-			return result, fmt.Errorf("non-retryable error: %w", err)
-		}
-
-		// Don't wait after the last attempt
-		if attempt == r.config.MaxRetries-1 {
-			break
-		}
-
-		// Calculate delay
-		delay := r.calculateDelay(attempt)
-
-		// Wait with context cancellation support
-		select {
-		case <-ctx.Done():
-			return result, fmt.Errorf("context cancelled: %w", ctx.Err())
-		case <-time.After(delay):
-			// Continue to next attempt
-		}
+	res, err := fn(ctx)
+	if err != nil {
+		return res, fmt.Errorf("operation failed: %w", err)
 	}
-
-	return result, fmt.Errorf("failed after %d attempts: %w", r.config.MaxRetries, lastErr)
+	return res, nil
 }
 
-// RetryWithCustomDelay executes a function with custom delay calculation
+// RetryWithCustomDelay executes a function (single attempt only)
 func (r *RetryService) RetryWithCustomDelay(ctx context.Context, fn RetryFunc, delayFunc func(attempt int) time.Duration) error {
-	var lastErr error
-
-	for attempt := 0; attempt < r.config.MaxRetries; attempt++ {
-		err := fn(ctx)
-		if err == nil {
-			return nil
-		}
-
-		lastErr = err
-
-		// Check if error is retryable
-		if !r.isRetryableError(err) {
-			return fmt.Errorf("non-retryable error: %w", err)
-		}
-
-		// Don't wait after the last attempt
-		if attempt == r.config.MaxRetries-1 {
-			break
-		}
-
-		// Use custom delay function
-		delay := delayFunc(attempt)
-
-		// Wait with context cancellation support
-		select {
-		case <-ctx.Done():
-			return fmt.Errorf("context cancelled: %w", ctx.Err())
-		case <-time.After(delay):
-			// Continue to next attempt
-		}
+	err := fn(ctx)
+	if err != nil {
+		return fmt.Errorf("operation failed: %w", err)
 	}
-
-	return fmt.Errorf("failed after %d attempts: %w", r.config.MaxRetries, lastErr)
+	return nil
 }
 
 // RetryWithExponentialBackoff executes a function with exponential backoff
@@ -310,115 +224,39 @@ type RetryStats struct {
 	TotalDelay         time.Duration
 }
 
-// RetryWithStats executes a function with retry logic and returns statistics
+// RetryWithStats executes a function and returns statistics (single attempt only)
 func (r *RetryService) RetryWithStats(ctx context.Context, fn RetryFunc) (error, RetryStats) {
 	stats := RetryStats{}
-	var lastErr error
-	var totalDelay time.Duration
+	stats.TotalAttempts = 1
 
-	for attempt := 0; attempt < r.config.MaxRetries; attempt++ {
-		stats.TotalAttempts++
-
-		err := fn(ctx)
-		if err == nil {
-			stats.SuccessfulAttempts++
-			stats.AverageDelay = time.Duration(totalDelay.Nanoseconds() / int64(attempt))
-			stats.TotalDelay = totalDelay
-			return nil, stats
-		}
-
-		lastErr = err
-		stats.FailedAttempts++
-
-		// Check if error is retryable
-		if !r.isRetryableError(err) {
-			stats.AverageDelay = time.Duration(totalDelay.Nanoseconds() / int64(attempt))
-			stats.TotalDelay = totalDelay
-			return fmt.Errorf("non-retryable error: %w", err), stats
-		}
-
-		// Don't wait after the last attempt
-		if attempt == r.config.MaxRetries-1 {
-			break
-		}
-
-		// Calculate delay
-		delay := r.calculateDelay(attempt)
-		totalDelay += delay
-
-		// Wait with context cancellation support
-		select {
-		case <-ctx.Done():
-			stats.AverageDelay = time.Duration(totalDelay.Nanoseconds() / int64(attempt))
-			stats.TotalDelay = totalDelay
-			return fmt.Errorf("context cancelled: %w", ctx.Err()), stats
-		case <-time.After(delay):
-			// Continue to next attempt
-		}
+	err := fn(ctx)
+	if err == nil {
+		stats.SuccessfulAttempts = 1
+		stats.AverageDelay = 0
+		stats.TotalDelay = 0
+		return nil, stats
 	}
 
-	stats.AverageDelay = time.Duration(totalDelay.Nanoseconds() / int64(stats.TotalAttempts))
-	stats.TotalDelay = totalDelay
-	return fmt.Errorf("failed after %d attempts: %w", r.config.MaxRetries, lastErr), stats
+	stats.FailedAttempts = 1
+	stats.AverageDelay = 0
+	stats.TotalDelay = 0
+	return fmt.Errorf("operation failed: %w", err), stats
 }
 
-// CircuitBreakerRetry executes a function with circuit breaker pattern
+// CircuitBreakerRetry executes a function (single attempt only)
 func (r *RetryService) CircuitBreakerRetry(ctx context.Context, fn RetryFunc, failureThreshold int, timeout time.Duration) error {
-	// Simple circuit breaker implementation
-	// In production, you'd want a more sophisticated circuit breaker
-
-	var consecutiveFailures int
-	var lastFailureTime time.Time
-
-	for attempt := 0; attempt < r.config.MaxRetries; attempt++ {
-		// Check circuit breaker
-		if consecutiveFailures >= failureThreshold {
-			if time.Since(lastFailureTime) < timeout {
-				return fmt.Errorf("circuit breaker is open")
-			}
-			// Reset circuit breaker
-			consecutiveFailures = 0
-		}
-
-		err := fn(ctx)
-		if err == nil {
-			consecutiveFailures = 0
-			return nil
-		}
-
-		consecutiveFailures++
-		lastFailureTime = time.Now()
-
-		// Check if error is retryable
-		if !r.isRetryableError(err) {
-			return fmt.Errorf("non-retryable error: %w", err)
-		}
-
-		// Don't wait after the last attempt
-		if attempt == r.config.MaxRetries-1 {
-			break
-		}
-
-		// Calculate delay
-		delay := r.calculateDelay(attempt)
-
-		// Wait with context cancellation support
-		select {
-		case <-ctx.Done():
-			return fmt.Errorf("context cancelled: %w", ctx.Err())
-		case <-time.After(delay):
-			// Continue to next attempt
-		}
+	err := fn(ctx)
+	if err != nil {
+		return fmt.Errorf("operation failed: %w", err)
 	}
-
-	return fmt.Errorf("failed after %d attempts", r.config.MaxRetries)
+	return nil
 }
 
 // Default retry configurations
 var (
 	// DefaultRetryConfig provides sensible defaults
 	DefaultRetryConfig = RetryConfig{
-		MaxRetries:  3,
+		MaxRetries:  1,
 		BaseDelay:   time.Second,
 		MaxDelay:    5 * time.Minute,
 		Multiplier:  2.0,
@@ -428,7 +266,7 @@ var (
 
 	// FastRetryConfig for quick retries
 	FastRetryConfig = RetryConfig{
-		MaxRetries:  2,
+		MaxRetries:  1,
 		BaseDelay:   100 * time.Millisecond,
 		MaxDelay:    1 * time.Second,
 		Multiplier:  2.0,
@@ -438,7 +276,7 @@ var (
 
 	// SlowRetryConfig for slow retries
 	SlowRetryConfig = RetryConfig{
-		MaxRetries:  5,
+		MaxRetries:  1,
 		BaseDelay:   5 * time.Second,
 		MaxDelay:    10 * time.Minute,
 		Multiplier:  2.0,
@@ -448,7 +286,7 @@ var (
 
 	// LinearRetryConfig for linear backoff
 	LinearRetryConfig = RetryConfig{
-		MaxRetries:  3,
+		MaxRetries:  1,
 		BaseDelay:   time.Second,
 		MaxDelay:    30 * time.Second,
 		Multiplier:  1.0,

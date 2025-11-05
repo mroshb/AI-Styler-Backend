@@ -7,7 +7,7 @@ import (
 // Store defines the interface for conversion data operations
 type Store interface {
 	// Conversion operations
-	CreateConversion(ctx context.Context, userID, userImageID, clothImageID string) (string, error)
+	CreateConversion(ctx context.Context, userID, userImageID, clothImageID, styleName string) (string, error)
 	GetConversion(ctx context.Context, conversionID string) (Conversion, error)
 	GetConversionWithDetails(ctx context.Context, conversionID string) (ConversionResponse, error)
 	UpdateConversion(ctx context.Context, conversionID string, req UpdateConversionRequest) error
@@ -53,6 +53,7 @@ type ImageInfo struct {
 	ID          string `json:"id"`
 	UserID      string `json:"userId"`
 	VendorID    string `json:"vendorId"`
+	Type        string `json:"type"` // "user", "vendor", "result"
 	OriginalURL string `json:"originalUrl"`
 	MimeType    string `json:"mimeType"`
 	FileSize    int64  `json:"fileSize"`

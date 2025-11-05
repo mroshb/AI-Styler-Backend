@@ -549,11 +549,19 @@ BEGIN
         END IF;
     END IF;
     
-    -- Validate cloth image (can be public vendor image)
+    -- Validate cloth image (can be public vendor image, public image, or user's own image)
+    -- Cloth image is accessible if:
+    -- 1. It's a vendor image (type = 'vendor')
+    -- 2. It's public (is_public = true)
+    -- 3. It belongs to the user (user_id = p_user_id for user images)
     IF NOT EXISTS (
         SELECT 1 FROM images 
         WHERE id = p_cloth_image_id 
-        AND (type = 'vendor' OR is_public = true)
+        AND (
+            type = 'vendor' 
+            OR is_public = true
+            OR (p_user_id IS NOT NULL AND user_id = p_user_id AND type = 'user')
+        )
     ) THEN
         RAISE EXCEPTION 'Cloth image not found or not accessible';
     END IF;

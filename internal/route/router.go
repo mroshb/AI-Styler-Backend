@@ -671,7 +671,7 @@ func mountWorker(r *gin.RouterGroup) {
 	}
 
 	// Create worker service and handler
-	_, workerHandler := worker.WireWorkerService(db)
+	_, workerHandler := worker.WireWorkerService(db, cfg)
 
 	// Skip mounting if handler is nil (not implemented yet)
 	if workerHandler == nil {

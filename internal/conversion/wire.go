@@ -3,7 +3,11 @@ package conversion
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"fmt"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/google/wire"
 )
 
@@ -145,12 +149,89 @@ type realImageService struct {
 }
 
 func (r *realImageService) GetImage(ctx context.Context, imageID string) (ImageInfo, error) {
-	// Implementation would query the database for image info
-	return ImageInfo{ID: imageID, IsPublic: true}, nil
+	query := `
+		SELECT id, user_id, vendor_id, type, original_url, mime_type, file_size, 
+		       width, height, is_public
+		FROM images 
+		WHERE id = $1`
+
+	var info ImageInfo
+	var userID sql.NullString
+	var vendorID sql.NullString
+	var mimeType sql.NullString
+	var width sql.NullInt64
+	var height sql.NullInt64
+
+	err := r.db.QueryRowContext(ctx, query, imageID).Scan(
+		&info.ID,
+		&userID,
+		&vendorID,
+		&info.Type,
+		&info.OriginalURL,
+		&mimeType,
+		&info.FileSize,
+		&width,
+		&height,
+		&info.IsPublic,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return ImageInfo{}, fmt.Errorf("image not found")
+		}
+		return ImageInfo{}, fmt.Errorf("failed to get image: %w", err)
+	}
+
+	if userID.Valid {
+		info.UserID = userID.String
+	}
+	if vendorID.Valid {
+		info.VendorID = vendorID.String
+	}
+	if mimeType.Valid {
+		info.MimeType = mimeType.String
+	}
+	if width.Valid {
+		info.Width = int(width.Int64)
+	}
+	if height.Valid {
+		info.Height = int(height.Int64)
+	}
+
+	return info, nil
 }
 
 func (r *realImageService) ValidateImageAccess(ctx context.Context, imageID, userID string) error {
-	// Implementation would validate user access to image
+	query := `
+		SELECT user_id, vendor_id, is_public
+		FROM images 
+		WHERE id = $1`
+
+	var dbUserID sql.NullString
+	var dbVendorID sql.NullString
+	var isPublic bool
+
+	err := r.db.QueryRowContext(ctx, query, imageID).Scan(&dbUserID, &dbVendorID, &isPublic)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("image not found")
+		}
+		return fmt.Errorf("failed to validate image access: %w", err)
+	}
+
+	// Check if user owns the image
+	isOwner := false
+	if dbUserID.Valid && dbUserID.String == userID {
+		isOwner = true
+	}
+	if dbVendorID.Valid && dbVendorID.String == userID {
+		isOwner = true
+	}
+
+	// Allow if: user owns the image or image is public
+	if !isOwner && !isPublic {
+		return fmt.Errorf("image access denied: you do not have permission to access this image")
+	}
+
 	return nil
 }
 
@@ -238,8 +319,95 @@ type realWorker struct {
 }
 
 func (r *realWorker) EnqueueConversion(ctx context.Context, conversionID string) error {
-	// Implementation would enqueue conversion job
+	// Get conversion details to build job payload
+	conversion, err := r.getConversion(ctx, conversionID)
+	if err != nil {
+		return fmt.Errorf("failed to get conversion: %w", err)
+	}
+
+	// Get style_name from database
+	var styleName sql.NullString
+	styleQuery := `SELECT style_name FROM conversions WHERE id = $1`
+	err = r.db.QueryRowContext(ctx, styleQuery, conversionID).Scan(&styleName)
+	if err != nil && err != sql.ErrNoRows {
+		return fmt.Errorf("failed to get style_name: %w", err)
+	}
+
+	// Generate job ID as UUID
+	jobID := uuid.New().String()
+
+	// Build job payload with options
+	options := make(map[string]interface{})
+	if styleName.Valid && styleName.String != "" {
+		options["style"] = styleName.String
+	}
+	
+	payload := map[string]interface{}{
+		"userImageId":  conversion.UserImageID,
+		"clothImageId": conversion.ClothImageID,
+	}
+	if len(options) > 0 {
+		payload["options"] = options
+	}
+	payloadJSON, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal payload: %w", err)
+	}
+
+	// Insert job into worker_jobs table
+	query := `
+		INSERT INTO worker_jobs (
+			id, type, conversion_id, user_id, priority, status, retry_count, 
+			max_retries, payload, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
+
+	_, err = r.db.ExecContext(ctx, query,
+		jobID,
+		"image_conversion",
+		conversionID,
+		conversion.UserID,
+		5, // JobPriorityNormal
+		"pending",
+		0,
+		1, // MaxRetries
+		string(payloadJSON),
+		time.Now(),
+		time.Now(),
+	)
+
+	if err != nil {
+		// Check if table doesn't exist
+		if err.Error() == `pq: relation "worker_jobs" does not exist` {
+			// Log but don't fail - table will be created by migrations
+			fmt.Printf("Warning: worker_jobs table does not exist yet. Job not enqueued.\n")
+			return nil
+		}
+		return fmt.Errorf("failed to enqueue job: %w", err)
+	}
+
 	return nil
+}
+
+// getConversion retrieves conversion details from database
+func (r *realWorker) getConversion(ctx context.Context, conversionID string) (*Conversion, error) {
+	query := `
+		SELECT id, user_id, user_image_id, cloth_image_id, status
+		FROM conversions 
+		WHERE id = $1`
+
+	var conv Conversion
+	err := r.db.QueryRowContext(ctx, query, conversionID).Scan(
+		&conv.ID,
+		&conv.UserID,
+		&conv.UserImageID,
+		&conv.ClothImageID,
+		&conv.Status,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &conv, nil
 }
 
 func (r *realWorker) ProcessConversion(ctx context.Context, jobID string) error {

@@ -89,17 +89,26 @@ type WorkerHealth struct {
 
 // GeminiConfig represents configuration for Gemini API
 type GeminiConfig struct {
-	APIKey     string `json:"apiKey"`
-	BaseURL    string `json:"baseUrl"`
-	Model      string `json:"model"`
-	MaxRetries int    `json:"maxRetries"`
-	Timeout    int    `json:"timeout"` // in seconds
+	APIKey                string  `json:"apiKey"`
+	BaseURL               string  `json:"baseUrl"`
+	Model                 string  `json:"model"`
+	MaxRetries            int     `json:"maxRetries"`
+	Timeout               int     `json:"timeout"`                 // in seconds
+	PreprocessNoiseLevel  float64 `json:"preprocess_noise_level"`  // Noise level for image preprocessing (0.0-1.0)
+	PreprocessJpegQuality int     `json:"preprocess_jpeg_quality"` // JPEG quality for preprocessing (1-100)
 }
 
 // GeminiRequest represents a request to Gemini API
 type GeminiRequest struct {
 	Contents         []GeminiContent        `json:"contents"`
 	GenerationConfig GeminiGenerationConfig `json:"generationConfig"`
+	SafetySettings   []SafetySetting        `json:"safetySettings,omitempty"`
+}
+
+// SafetySetting represents safety filter configuration
+type SafetySetting struct {
+	Category  string `json:"category"`  // e.g., "HARM_CATEGORY_SEXUALLY_EXPLICIT", "HARM_CATEGORY_HATE_SPEECH", etc.
+	Threshold string `json:"threshold"` // "BLOCK_NONE", "BLOCK_ONLY_HIGH", "BLOCK_MEDIUM_AND_ABOVE", "BLOCK_LOW_AND_ABOVE"
 }
 
 // GeminiContent represents content in a Gemini request
@@ -135,8 +144,16 @@ type GeminiResponse struct {
 
 // GeminiCandidate represents a candidate response
 type GeminiCandidate struct {
-	Content      GeminiContent `json:"content"`
-	FinishReason string        `json:"finishReason"`
+	Content       GeminiContent  `json:"content"`
+	FinishReason  string         `json:"finishReason"`
+	SafetyRatings []SafetyRating `json:"safetyRatings,omitempty"`
+}
+
+// SafetyRating represents safety rating information
+type SafetyRating struct {
+	Category    string `json:"category"`
+	Probability string `json:"probability"`
+	Blocked     bool   `json:"blocked"`
 }
 
 // GeminiUsageMetadata represents usage metadata
@@ -160,7 +177,7 @@ const (
 	DefaultMaxWorkers      = 5
 	DefaultJobTimeout      = 10 * time.Minute
 	DefaultRetryDelay      = 30 * time.Second
-	DefaultMaxRetries      = 3
+	DefaultMaxRetries      = 1
 	DefaultPollInterval    = 5 * time.Second
 	DefaultCleanupInterval = 1 * time.Hour
 	DefaultHealthCheckPort = 8081

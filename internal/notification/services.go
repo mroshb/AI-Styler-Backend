@@ -184,8 +184,8 @@ func NewRetryHandler() RetryHandler {
 }
 
 func (r *RetryHandlerImpl) ShouldRetry(ctx context.Context, delivery NotificationDelivery, err error) bool {
-	// Simple retry logic - retry if retry count is less than 3
-	return delivery.RetryCount < 3
+	// No retries - always return false
+	return false
 }
 
 func (r *RetryHandlerImpl) GetRetryDelay(ctx context.Context, delivery NotificationDelivery) int64 {

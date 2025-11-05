@@ -51,7 +51,7 @@ type ServiceRetryConfig struct {
 // DefaultRetryConfig returns default retry configuration
 func DefaultRetryConfig() *RetryConfig {
 	return &RetryConfig{
-		MaxRetries:  3,
+		MaxRetries:  1,
 		BaseDelay:   time.Second,
 		MaxDelay:    5 * time.Minute,
 		Multiplier:  2.0,
@@ -97,7 +97,7 @@ func DefaultRetryConfig() *RetryConfig {
 		},
 		ServiceConfigs: map[string]ServiceRetryConfig{
 			"gemini_api": {
-				MaxRetries:  5,
+				MaxRetries:  1,
 				BaseDelay:   2 * time.Second,
 				MaxDelay:    30 * time.Second,
 				Multiplier:  2.0,
@@ -111,7 +111,7 @@ func DefaultRetryConfig() *RetryConfig {
 				},
 			},
 			"worker": {
-				MaxRetries:  3,
+				MaxRetries:  1,
 				BaseDelay:   time.Second,
 				MaxDelay:    10 * time.Second,
 				Multiplier:  1.5,
@@ -123,7 +123,7 @@ func DefaultRetryConfig() *RetryConfig {
 				},
 			},
 			"storage": {
-				MaxRetries:  4,
+				MaxRetries:  1,
 				BaseDelay:   500 * time.Millisecond,
 				MaxDelay:    15 * time.Second,
 				Multiplier:  2.0,
@@ -136,7 +136,7 @@ func DefaultRetryConfig() *RetryConfig {
 				},
 			},
 			"payment": {
-				MaxRetries:  2,
+				MaxRetries:  1,
 				BaseDelay:   3 * time.Second,
 				MaxDelay:    10 * time.Second,
 				Multiplier:  2.0,
@@ -148,7 +148,7 @@ func DefaultRetryConfig() *RetryConfig {
 				},
 			},
 			"notification": {
-				MaxRetries:  3,
+				MaxRetries:  1,
 				BaseDelay:   time.Second,
 				MaxDelay:    5 * time.Second,
 				Multiplier:  1.5,
@@ -185,123 +185,31 @@ type RetryFunc func(ctx context.Context) error
 // RetryWithResultFunc represents a function that returns a result and can be retried
 type RetryWithResultFunc func(ctx context.Context) (interface{}, error)
 
-// Retry executes a function with retry logic
+// Retry executes a function (single attempt only)
 func (rs *RetryService) Retry(ctx context.Context, service string, fn RetryFunc) error {
-	config := rs.getServiceConfig(service)
-
-	var lastErr error
-
-	for attempt := 0; attempt < config.MaxRetries; attempt++ {
-		err := fn(ctx)
-		if err == nil {
-			return nil
-		}
-
-		lastErr = err
-
-		// Check if error is retryable
-		if !rs.isRetryableError(err, config.RetryableErrors) {
-			return fmt.Errorf("non-retryable error: %w", err)
-		}
-
-		// Don't wait after the last attempt
-		if attempt == config.MaxRetries-1 {
-			break
-		}
-
-		// Calculate delay
-		delay := rs.calculateDelay(attempt, config)
-
-		// Wait with context cancellation support
-		select {
-		case <-ctx.Done():
-			return fmt.Errorf("context cancelled: %w", ctx.Err())
-		case <-time.After(delay):
-			// Continue to next attempt
-		}
+	err := fn(ctx)
+	if err != nil {
+		return fmt.Errorf("operation failed: %w", err)
 	}
-
-	return fmt.Errorf("failed after %d attempts: %w", config.MaxRetries, lastErr)
+	return nil
 }
 
-// RetryWithResult executes a function with retry logic and returns the result
+// RetryWithResult executes a function and returns the result (single attempt only)
 func (rs *RetryService) RetryWithResult(ctx context.Context, service string, fn RetryWithResultFunc) (interface{}, error) {
-	config := rs.getServiceConfig(service)
-
-	var result interface{}
-	var lastErr error
-
-	for attempt := 0; attempt < config.MaxRetries; attempt++ {
-		res, err := fn(ctx)
-		if err == nil {
-			return res, nil
-		}
-
-		result = res
-		lastErr = err
-
-		// Check if error is retryable
-		if !rs.isRetryableError(err, config.RetryableErrors) {
-			return result, fmt.Errorf("non-retryable error: %w", err)
-		}
-
-		// Don't wait after the last attempt
-		if attempt == config.MaxRetries-1 {
-			break
-		}
-
-		// Calculate delay
-		delay := rs.calculateDelay(attempt, config)
-
-		// Wait with context cancellation support
-		select {
-		case <-ctx.Done():
-			return result, fmt.Errorf("context cancelled: %w", ctx.Err())
-		case <-time.After(delay):
-			// Continue to next attempt
-		}
+	res, err := fn(ctx)
+	if err != nil {
+		return res, fmt.Errorf("operation failed: %w", err)
 	}
-
-	return result, fmt.Errorf("failed after %d attempts: %w", config.MaxRetries, lastErr)
+	return res, nil
 }
 
-// RetryWithCustomDelay executes a function with custom delay calculation
+// RetryWithCustomDelay executes a function (single attempt only)
 func (rs *RetryService) RetryWithCustomDelay(ctx context.Context, service string, fn RetryFunc, delayFunc func(attempt int) time.Duration) error {
-	config := rs.getServiceConfig(service)
-
-	var lastErr error
-
-	for attempt := 0; attempt < config.MaxRetries; attempt++ {
-		err := fn(ctx)
-		if err == nil {
-			return nil
-		}
-
-		lastErr = err
-
-		// Check if error is retryable
-		if !rs.isRetryableError(err, config.RetryableErrors) {
-			return fmt.Errorf("non-retryable error: %w", err)
-		}
-
-		// Don't wait after the last attempt
-		if attempt == config.MaxRetries-1 {
-			break
-		}
-
-		// Use custom delay function
-		delay := delayFunc(attempt)
-
-		// Wait with context cancellation support
-		select {
-		case <-ctx.Done():
-			return fmt.Errorf("context cancelled: %w", ctx.Err())
-		case <-time.After(delay):
-			// Continue to next attempt
-		}
+	err := fn(ctx)
+	if err != nil {
+		return fmt.Errorf("operation failed: %w", err)
 	}
-
-	return fmt.Errorf("failed after %d attempts: %w", config.MaxRetries, lastErr)
+	return nil
 }
 
 // getServiceConfig returns the retry configuration for a specific service

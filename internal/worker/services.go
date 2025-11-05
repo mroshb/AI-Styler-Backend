@@ -93,8 +93,8 @@ func NewRetryHandler() RetryHandler {
 }
 
 func (r *RetryHandlerImpl) ShouldRetry(ctx context.Context, job *WorkerJob, err error) bool {
-	// Simple retry logic - retry if retry count is less than max retries
-	return job.RetryCount < job.MaxRetries
+	// No retries - always return false
+	return false
 }
 
 func (r *RetryHandlerImpl) GetRetryDelay(ctx context.Context, job *WorkerJob) time.Duration {

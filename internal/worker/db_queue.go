@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -47,6 +48,7 @@ func (q *DBJobQueue) EnqueueJob(ctx context.Context, job *WorkerJob) error {
 }
 
 // DequeueJob removes and returns a job from the queue
+// Uses FOR UPDATE SKIP LOCKED to prevent race conditions when multiple workers try to get the same job
 func (q *DBJobQueue) DequeueJob(ctx context.Context, workerID string) (*WorkerJob, error) {
 	query := `
 		UPDATE worker_jobs 
@@ -56,6 +58,7 @@ func (q *DBJobQueue) DequeueJob(ctx context.Context, workerID string) (*WorkerJo
 			WHERE status = 'pending' 
 			ORDER BY priority DESC, created_at ASC 
 			LIMIT 1
+			FOR UPDATE SKIP LOCKED
 		)
 		RETURNING id, type, conversion_id, user_id, priority, status, worker_id, 
 		          retry_count, max_retries, payload, created_at, updated_at, started_at`
@@ -104,13 +107,50 @@ func (q *DBJobQueue) DequeueJob(ctx context.Context, workerID string) (*WorkerJo
 		job.StartedAt = &startedAt.Time
 	}
 
-	// Parse payload (simplified)
+	// Parse payload JSON
+	if err := parsePayloadJSON(payloadJSON, &job.Payload); err != nil {
+		// Fallback to placeholder if parsing fails
 	job.Payload = JobPayload{
 		UserImageID:  "placeholder",
 		ClothImageID: "placeholder",
+		}
 	}
 
 	return &job, nil
+}
+
+// parsePayloadJSON parses the payload JSON string into JobPayload
+func parsePayloadJSON(payloadJSON string, payload *JobPayload) error {
+	if payloadJSON == "" {
+		return fmt.Errorf("empty payload")
+	}
+
+	var payloadData map[string]interface{}
+	if err := json.Unmarshal([]byte(payloadJSON), &payloadData); err != nil {
+		return fmt.Errorf("failed to unmarshal payload: %w", err)
+	}
+
+	payload.UserImageID = getStringFromMap(payloadData, "userImageId")
+	payload.ClothImageID = getStringFromMap(payloadData, "clothImageId")
+	
+	// Initialize Options map if it doesn't exist
+	if payload.Options == nil {
+		payload.Options = make(map[string]interface{})
+	}
+	
+	if options, ok := payloadData["options"].(map[string]interface{}); ok {
+		payload.Options = options
+	}
+
+	return nil
+}
+
+// getStringFromMap extracts a string value from a map
+func getStringFromMap(m map[string]interface{}, key string) string {
+	if val, ok := m[key].(string); ok {
+		return val
+	}
+	return ""
 }
 
 // UpdateJobStatus updates the status of a job
@@ -143,6 +183,17 @@ func (q *DBJobQueue) FailJob(ctx context.Context, jobID string, errorMessage str
 		WHERE id = $2`
 
 	_, err := q.db.ExecContext(ctx, query, errorMessage, jobID)
+	return err
+}
+
+// UpdateJobRetryCount updates the retry count and error message for a job
+func (q *DBJobQueue) UpdateJobRetryCount(ctx context.Context, jobID string, retryCount int, errorMessage string) error {
+	query := `
+		UPDATE worker_jobs 
+		SET retry_count = $1, error_message = $2, updated_at = NOW()
+		WHERE id = $3`
+
+	_, err := q.db.ExecContext(ctx, query, retryCount, errorMessage, jobID)
 	return err
 }
 
@@ -190,10 +241,13 @@ func (q *DBJobQueue) GetJob(ctx context.Context, jobID string) (*WorkerJob, erro
 		job.CompletedAt = &completedAt.Time
 	}
 
-	// Parse payload (simplified)
+	// Parse payload JSON
+	if err := parsePayloadJSON(payloadJSON, &job.Payload); err != nil {
+		// Fallback to placeholder if parsing fails
 	job.Payload = JobPayload{
 		UserImageID:  "placeholder",
 		ClothImageID: "placeholder",
+		}
 	}
 
 	return &job, nil
@@ -287,10 +341,13 @@ func (q *DBJobQueue) GetPendingJobs(ctx context.Context, limit int) ([]*WorkerJo
 		job.Priority = JobPriority(priority)
 		job.Status = JobStatus(status)
 
-		// Parse payload (simplified)
+		// Parse payload JSON
+		if err := parsePayloadJSON(payloadJSON, &job.Payload); err != nil {
+			// Fallback to placeholder if parsing fails
 		job.Payload = JobPayload{
 			UserImageID:  "placeholder",
 			ClothImageID: "placeholder",
+			}
 		}
 
 		jobs = append(jobs, &job)

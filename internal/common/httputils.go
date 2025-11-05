@@ -1,6 +1,7 @@
 package common
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -31,8 +32,16 @@ func WriteError(w http.ResponseWriter, statusCode int, code, message string, det
 }
 
 // GinWrap adapts http.HandlerFunc to gin.HandlerFunc
+// It extracts path parameters from Gin context and adds them to the request context
 func GinWrap(fn func(w http.ResponseWriter, r *http.Request)) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Extract all path parameters from Gin context and add them to request context
+		ctx := c.Request.Context()
+		for _, param := range c.Params {
+			ctx = context.WithValue(ctx, "path_param_"+param.Key, param.Value)
+		}
+		c.Request = c.Request.WithContext(ctx)
+		
 		fn(c.Writer, c.Request)
 	}
 }

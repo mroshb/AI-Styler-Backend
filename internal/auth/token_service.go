@@ -2,14 +2,15 @@ package auth
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"time"
 
 	"ai-styler/internal/security"
 
 	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // SessionStore defines the interface for session storage
@@ -35,12 +36,23 @@ func NewPostgresSessionStore(db *sql.DB) *PostgresSessionStore {
 // CreateSession creates a new session
 func (s *PostgresSessionStore) CreateSession(ctx context.Context, sessionID, userID, refreshTokenHash, userAgent, ip string, expiresAt time.Time) error {
 	query := `
-		INSERT INTO sessions (id, user_id, refresh_token_hash, user_agent, ip, expires_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO sessions (id, user_id, refresh_token_hash, user_agent, ip, expires_at, last_used_at)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW())
 	`
 
-	_, err := s.db.ExecContext(ctx, query, sessionID, userID, refreshTokenHash, userAgent, ip, expiresAt)
-	return err
+	// Convert empty IP string to NULL for PostgreSQL INET type
+	var ipValue interface{}
+	if ip == "" {
+		ipValue = nil
+	} else {
+		ipValue = ip
+	}
+
+	_, err := s.db.ExecContext(ctx, query, sessionID, userID, refreshTokenHash, userAgent, ipValue, expiresAt)
+	if err != nil {
+		return fmt.Errorf("failed to create session: %w", err)
+	}
+	return nil
 }
 
 // GetSession retrieves a session by ID
@@ -52,12 +64,15 @@ func (s *PostgresSessionStore) GetSession(ctx context.Context, sessionID string)
 	`
 
 	var session Session
+	var userAgent sql.NullString
+	var ip sql.NullString
+	
 	err := s.db.QueryRowContext(ctx, query, sessionID).Scan(
 		&session.ID,
 		&session.UserID,
 		&session.RefreshTokenHash,
-		&session.UserAgent,
-		&session.IP,
+		&userAgent,
+		&ip,
 		&session.LastUsedAt,
 		&session.ExpiresAt,
 		&session.RevokedAt,
@@ -65,6 +80,19 @@ func (s *PostgresSessionStore) GetSession(ctx context.Context, sessionID string)
 
 	if err != nil {
 		return nil, err
+	}
+
+	// Convert nullable fields to strings
+	if userAgent.Valid {
+		session.UserAgent = userAgent.String
+	} else {
+		session.UserAgent = ""
+	}
+	
+	if ip.Valid {
+		session.IP = ip.String
+	} else {
+		session.IP = ""
 	}
 
 	return &session, nil
@@ -212,13 +240,13 @@ func (s *ProductionTokenService) ValidateAccess(ctx context.Context, token strin
 func (s *ProductionTokenService) Rotate(ctx context.Context, refreshToken string) (string, string, time.Time, error) {
 	claims, err := s.jwtSigner.VerifyRefreshToken(refreshToken)
 	if err != nil {
-		return "", "", time.Time{}, err
+		return "", "", time.Time{}, fmt.Errorf("failed to verify refresh token: %w", err)
 	}
 
 	// Verify session
 	session, err := s.sessionStore.GetSession(ctx, claims.SessionID)
 	if err != nil {
-		return "", "", time.Time{}, fmt.Errorf("session not found: %w", err)
+		return "", "", time.Time{}, fmt.Errorf("session not found for sessionID %s: %w", claims.SessionID, err)
 	}
 
 	if session.RevokedAt != nil {
@@ -247,12 +275,10 @@ func (s *ProductionTokenService) RevokeAll(ctx context.Context, userID string) e
 	return s.sessionStore.RevokeUserSessions(ctx, userID)
 }
 
-// hashToken hashes a token for secure storage
+// hashToken hashes a token for secure storage using SHA-256
+// Note: bcrypt has a 72-byte limit, so we use SHA-256 for token hashing
 func (s *ProductionTokenService) hashToken(token string) (string, error) {
-	// Use bcrypt to hash the token
-	hash, err := bcrypt.GenerateFromPassword([]byte(token), bcrypt.DefaultCost)
-	if err != nil {
-		return "", err
-	}
-	return string(hash), nil
+	// Use SHA-256 for token hashing (bcrypt is limited to 72 bytes)
+	hash := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(hash[:]), nil
 }

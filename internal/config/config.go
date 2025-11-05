@@ -91,11 +91,13 @@ type MonitoringConfig struct {
 }
 
 type GeminiConfig struct {
-	APIKey     string
-	BaseURL    string
-	Model      string
-	Timeout    int
-	MaxRetries int
+	APIKey               string
+	BaseURL              string
+	Model                string
+	Timeout              int
+	MaxRetries           int
+	PreprocessNoiseLevel float64
+	PreprocessJpegQuality int
 }
 
 func Load() (*Config, error) {
@@ -121,8 +123,8 @@ func Load() (*Config, error) {
 		},
 		JWT: JWTConfig{
 			Secret:     getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
-			AccessTTL:  getEnvAsDuration("JWT_ACCESS_TTL", 15*time.Minute),
-			RefreshTTL: getEnvAsDuration("JWT_REFRESH_TTL", 30*24*time.Hour),
+			AccessTTL:  getEnvAsDuration("JWT_ACCESS_TTL", 30*24*time.Hour),   // 30 days
+			RefreshTTL: getEnvAsDuration("JWT_REFRESH_TTL", 90*24*time.Hour), // 90 days
 		},
 		Redis: RedisConfig{
 			Host:     getEnv("REDIS_HOST", "localhost"),
@@ -166,11 +168,13 @@ func Load() (*Config, error) {
 			HealthEnabled:    getEnvAsBool("HEALTH_ENABLED", true),
 		},
 		Gemini: GeminiConfig{
-			APIKey:     getEnv("GEMINI_API_KEY", ""),
-			BaseURL:    getEnv("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com"),
-			Model:      getEnv("GEMINI_MODEL", "gemini-pro-vision"),
-			Timeout:    getEnvAsInt("GEMINI_TIMEOUT", 300),
-			MaxRetries: getEnvAsInt("GEMINI_MAX_RETRIES", 3),
+			APIKey:               getEnv("GEMINI_API_KEY", ""),
+			BaseURL:              getEnv("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com"),
+			Model:                getEnv("GEMINI_MODEL", "gemini-pro-vision"),
+			Timeout:              getEnvAsInt("GEMINI_TIMEOUT", 300),
+			MaxRetries:           getEnvAsInt("GEMINI_MAX_RETRIES", 1),
+			PreprocessNoiseLevel: getEnvAsFloat("GEMINI_PREPROCESS_NOISE_LEVEL", 0.02),
+			PreprocessJpegQuality: getEnvAsInt("GEMINI_PREPROCESS_JPEG_QUALITY", 95),
 		},
 	}
 
@@ -206,6 +210,15 @@ func getEnvAsBool(key string, defaultValue bool) bool {
 	if value := os.Getenv(key); value != "" {
 		if boolValue, err := strconv.ParseBool(value); err == nil {
 			return boolValue
+		}
+	}
+	return defaultValue
+}
+
+func getEnvAsFloat(key string, defaultValue float64) float64 {
+	if value := os.Getenv(key); value != "" {
+		if floatValue, err := strconv.ParseFloat(value, 64); err == nil {
+			return floatValue
 		}
 	}
 	return defaultValue

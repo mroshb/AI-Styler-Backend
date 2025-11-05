@@ -59,8 +59,22 @@ func authenticateMiddleware() gin.HandlerFunc {
 		// Get the user ID from the context (set by auth middleware)
 		// This assumes the auth middleware has already validated the token
 		// and set the user ID in the context
-		userID := c.GetString("userID")
-		if userID == "" {
+		// Try both "user_id" (snake_case) and "userID" (camelCase) for compatibility
+		userID, exists := c.Get("user_id")
+		if !exists || userID == "" {
+			// Fallback to camelCase
+			userID = c.GetString("userID")
+		}
+		
+		// Convert to string if it's not already
+		userIDStr := ""
+		if userID != nil {
+			if str, ok := userID.(string); ok {
+				userIDStr = str
+			}
+		}
+		
+		if userIDStr == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"error": gin.H{
 					"code":    "unauthorized",
@@ -72,7 +86,7 @@ func authenticateMiddleware() gin.HandlerFunc {
 		}
 
 		// Set user ID in context for handlers using proper context key
-		ctx := common.SetUserIDInContext(c.Request.Context(), userID)
+		ctx := common.SetUserIDInContext(c.Request.Context(), userIDStr)
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	}

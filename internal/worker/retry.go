@@ -26,22 +26,8 @@ func NewRetryService(config *RetryConfig) *RetryService {
 
 // ShouldRetry determines if a job should be retried based on the error
 func (r *RetryService) ShouldRetry(ctx context.Context, job *WorkerJob, err error) bool {
-	// Don't retry if we've exceeded max retries
-	if job.RetryCount >= job.MaxRetries {
-		return false
-	}
-
-	// Don't retry if the error is not retryable
-	if !r.isRetryableError(err) {
-		return false
-	}
-
-	// Don't retry if the job has been cancelled
-	if job.Status == JobStatusCancelled {
-		return false
-	}
-
-	return true
+	// No retries - always return false
+	return false
 }
 
 // GetRetryDelay calculates the delay before the next retry attempt
@@ -182,7 +168,7 @@ func toLowerCase(s string) string {
 // getDefaultRetryConfig returns default retry configuration
 func getDefaultRetryConfig() *RetryConfig {
 	return &RetryConfig{
-		MaxRetries:    3,
+		MaxRetries:    1,
 		InitialDelay:  5 * time.Second,
 		MaxDelay:      5 * time.Minute,
 		BackoffFactor: 2.0,
@@ -219,9 +205,8 @@ func NewAdvancedRetryService(config *RetryConfig, policy RetryPolicy) *AdvancedR
 
 // ShouldRetry determines if a job should be retried
 func (r *AdvancedRetryService) ShouldRetry(ctx context.Context, job *WorkerJob, err error) bool {
-	// Use the base retry service logic
-	baseService := NewRetryService(r.config)
-	return baseService.ShouldRetry(ctx, job, err)
+	// No retries - always return false
+	return false
 }
 
 // GetRetryDelay calculates the delay based on the retry policy

@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -20,6 +22,7 @@ type Handler struct {
 	rateLimiter RateLimiter
 	sms         sms.Provider
 	hasher      security.PasswordHasher
+	accessTTL   time.Duration
 }
 
 func NewHandler(store Store, tokens TokenService, rl RateLimiter, smsProvider sms.Provider) *Handler {
@@ -53,12 +56,19 @@ func NewHandler(store Store, tokens TokenService, rl RateLimiter, smsProvider sm
 		hasher = security.NewBCryptHasher(cfg.Security.BCryptCost)
 	}
 
+	// Get access token TTL from config, default to 30 days if not set
+	accessTTL := cfg.JWT.AccessTTL
+	if accessTTL == 0 {
+		accessTTL = 30 * 24 * time.Hour
+	}
+
 	return &Handler{
 		store:       store,
 		tokens:      tokens,
 		rateLimiter: rl,
 		sms:         smsProvider,
 		hasher:      hasher,
+		accessTTL:   accessTTL,
 	}
 }
 
@@ -209,7 +219,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		at, rt, expAt, err := h.tokens.IssueTokens(r.Context(), userID, phone, req.Role, "")
 		if err == nil {
 			resp.AccessToken = at
-			resp.AccessExpiresIn = 900
+			resp.AccessExpiresIn = int(h.accessTTL.Seconds())
 			resp.RefreshToken = rt
 			resp.RefreshExpires = expAt.Format(time.RFC3339)
 		}
@@ -264,12 +274,14 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 	at, rt, expAt, err := h.tokens.IssueTokens(r.Context(), user.ID, user.Phone, user.Role, r.UserAgent())
 	if err != nil {
-		common.WriteError(w, http.StatusInternalServerError, "server_error", "could not issue tokens", nil)
+		// Log the actual error for debugging
+		log.Printf("Failed to issue tokens: %v", err)
+		common.WriteError(w, http.StatusInternalServerError, "server_error", fmt.Sprintf("could not issue tokens: %v", err), nil)
 		return
 	}
 	var resp loginResp
 	resp.AccessToken = at
-	resp.AccessTokenExpiresIn = 900
+	resp.AccessTokenExpiresIn = int(h.accessTTL.Seconds())
 	resp.RefreshToken = rt
 	resp.RefreshTokenExpiresAt = expAt
 	resp.User.ID = user.ID
@@ -279,8 +291,18 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 type refreshReq struct {
-	RefreshToken string `json:"refreshToken"`
+	RefreshToken      string `json:"refreshToken"`      // camelCase (preferred)
+	RefreshTokenSnake string `json:"refresh_token"`     // snake_case (backward compatibility)
 }
+
+// GetRefreshToken returns the refresh token from whichever field was provided
+func (r *refreshReq) GetRefreshToken() string {
+	if r.RefreshToken != "" {
+		return r.RefreshToken
+	}
+	return r.RefreshTokenSnake
+}
+
 type refreshResp struct {
 	AccessToken           string `json:"accessToken"`
 	AccessTokenExpiresIn  int    `json:"accessTokenExpiresIn"`
@@ -290,13 +312,20 @@ type refreshResp struct {
 
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	var req refreshReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.RefreshToken == "" {
-		common.WriteError(w, http.StatusBadRequest, "bad_request", "invalid input", nil)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		common.WriteError(w, http.StatusBadRequest, "bad_request", "invalid json", nil)
 		return
 	}
-	at, rt, expAt, err := h.tokens.Rotate(r.Context(), req.RefreshToken)
+	refreshToken := req.GetRefreshToken()
+	if refreshToken == "" {
+		common.WriteError(w, http.StatusBadRequest, "bad_request", "invalid input: refreshToken is required", nil)
+		return
+	}
+	at, rt, expAt, err := h.tokens.Rotate(r.Context(), refreshToken)
 	if err != nil {
-		common.WriteError(w, http.StatusUnauthorized, "unauthorized", "invalid refresh", nil)
+		// Log the actual error for debugging
+		log.Printf("Failed to rotate refresh token: %v", err)
+		common.WriteError(w, http.StatusUnauthorized, "unauthorized", fmt.Sprintf("invalid refresh: %v", err), nil)
 		return
 	}
 	common.WriteJSON(w, http.StatusOK, refreshResp{AccessToken: at, AccessTokenExpiresIn: 900, RefreshToken: rt, RefreshTokenExpiresAt: expAt.Format(time.RFC3339)})
