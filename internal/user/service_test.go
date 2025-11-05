@@ -214,7 +214,7 @@ func (m *MockStore) GetUserByID(ctx context.Context, userID string) (UserProfile
 func TestService_GetProfile(t *testing.T) {
 	store := NewMockStore()
 	auditLogger := NewMockAuditLogger()
-	service := NewService(store, nil, nil, nil, nil, auditLogger)
+	service := NewService(store, auditLogger)
 
 	// Setup test data
 	userID := "user-123"
@@ -248,7 +248,7 @@ func TestService_GetProfile(t *testing.T) {
 func TestService_UpdateProfile(t *testing.T) {
 	store := NewMockStore()
 	auditLogger := NewMockAuditLogger()
-	service := NewService(store, nil, nil, nil, nil, auditLogger)
+	service := NewService(store, auditLogger)
 
 	// Setup test data
 	userID := "user-123"
@@ -283,144 +283,6 @@ func TestService_UpdateProfile(t *testing.T) {
 	}
 }
 
-func TestService_CreateConversion(t *testing.T) {
-	store := NewMockStore()
-	rateLimiter := NewMockRateLimiter()
-	auditLogger := NewMockAuditLogger()
-	processor := NewMockConversionProcessor()
-	notifier := NewMockNotificationService()
-	service := NewService(store, processor, notifier, nil, rateLimiter, auditLogger)
-
-	// Setup test data
-	userID := "user-123"
-	store.canConvertResults[userID+":free"] = true
-
-	// Test create conversion
-	req := CreateConversionRequest{
-		InputFileURL: "https://example.com/input.jpg",
-		StyleName:    "vintage",
-		Type:         ConversionTypeFree,
-	}
-
-	conversion, err := service.CreateConversion(context.Background(), userID, req)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	if conversion.UserID != userID {
-		t.Errorf("Expected userID %s, got %s", userID, conversion.UserID)
-	}
-	if conversion.ConversionType != ConversionTypeFree {
-		t.Errorf("Expected conversion type %s, got %s", ConversionTypeFree, conversion.ConversionType)
-	}
-	if conversion.StyleName != "vintage" {
-		t.Errorf("Expected style name vintage, got %s", conversion.StyleName)
-	}
-}
-
-func TestService_CreateConversion_QuotaExceeded(t *testing.T) {
-	store := NewMockStore()
-	rateLimiter := NewMockRateLimiter()
-	auditLogger := NewMockAuditLogger()
-	processor := NewMockConversionProcessor()
-	notifier := NewMockNotificationService()
-	service := NewService(store, processor, notifier, nil, rateLimiter, auditLogger)
-
-	// Setup test data - user cannot convert
-	userID := "user-123"
-	store.canConvertResults[userID+":free"] = false
-
-	// Test create conversion
-	req := CreateConversionRequest{
-		InputFileURL: "https://example.com/input.jpg",
-		StyleName:    "vintage",
-		Type:         ConversionTypeFree,
-	}
-
-	_, err := service.CreateConversion(context.Background(), userID, req)
-	if err == nil {
-		t.Fatal("Expected error for quota exceeded, got nil")
-	}
-
-	if !containsStringInString(err.Error(), "quota exceeded") {
-		t.Errorf("Expected quota exceeded error, got %v", err)
-	}
-}
-
-func TestService_GetQuotaStatus(t *testing.T) {
-	store := NewMockStore()
-	auditLogger := NewMockAuditLogger()
-	service := NewService(store, nil, nil, nil, nil, auditLogger)
-
-	// Setup test data
-	userID := "user-123"
-	expectedStatus := QuotaStatus{
-		FreeConversionsRemaining:  1,
-		PaidConversionsRemaining:  5,
-		TotalConversionsRemaining: 6,
-		PlanName:                  PlanBasic,
-		MonthlyLimit:              10,
-	}
-	store.quotaStatus[userID] = expectedStatus
-
-	// Test
-	status, err := service.GetQuotaStatus(context.Background(), userID)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	if status.FreeConversionsRemaining != expectedStatus.FreeConversionsRemaining {
-		t.Errorf("Expected free conversions remaining %d, got %d",
-			expectedStatus.FreeConversionsRemaining, status.FreeConversionsRemaining)
-	}
-	if status.PlanName != expectedStatus.PlanName {
-		t.Errorf("Expected plan name %s, got %s", expectedStatus.PlanName, status.PlanName)
-	}
-}
-
-func TestService_CreateUserPlan(t *testing.T) {
-	store := NewMockStore()
-	auditLogger := NewMockAuditLogger()
-	service := NewService(store, nil, nil, nil, nil, auditLogger)
-
-	// Test create plan
-	userID := "user-123"
-	planName := PlanBasic
-
-	plan, err := service.CreateUserPlan(context.Background(), userID, planName)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	if plan.UserID != userID {
-		t.Errorf("Expected userID %s, got %s", userID, plan.UserID)
-	}
-	if plan.PlanName != planName {
-		t.Errorf("Expected plan name %s, got %s", planName, plan.PlanName)
-	}
-	if plan.Status != PlanStatusActive {
-		t.Errorf("Expected status %s, got %s", PlanStatusActive, plan.Status)
-	}
-}
-
-func TestService_CreateUserPlan_InvalidPlan(t *testing.T) {
-	store := NewMockStore()
-	auditLogger := NewMockAuditLogger()
-	service := NewService(store, nil, nil, nil, nil, auditLogger)
-
-	// Test invalid plan
-	userID := "user-123"
-	invalidPlan := "invalid-plan"
-
-	_, err := service.CreateUserPlan(context.Background(), userID, invalidPlan)
-	if err == nil {
-		t.Fatal("Expected error for invalid plan, got nil")
-	}
-
-	if !containsStringInString(err.Error(), "invalid plan name") {
-		t.Errorf("Expected invalid plan name error, got %v", err)
-	}
-}
 
 // Helper functions
 

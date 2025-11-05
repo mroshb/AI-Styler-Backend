@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/lib/pq"
 )
@@ -32,10 +33,33 @@ func (s *postgresStore) CreateImage(ctx context.Context, req CreateImageRequest)
 
 	var image Image
 	var metadataJSON string
+	
+	// Convert metadata to JSONB
+	var metadataJSONStr string
+	if req.Metadata != nil && len(req.Metadata) > 0 {
+		metadataBytes, err := json.Marshal(req.Metadata)
+		if err != nil {
+			return Image{}, fmt.Errorf("failed to marshal metadata: %w", err)
+		}
+		metadataJSONStr = string(metadataBytes)
+	} else {
+		metadataJSONStr = "{}"
+	}
+	
+	// Handle nil/empty tags - use pq.StringArray which implements driver.Valuer
+	var tagsArg interface{}
+	if req.Tags != nil && len(req.Tags) > 0 {
+		// Non-empty slice - convert to pq.StringArray
+		tagsArg = pq.StringArray(req.Tags)
+	} else {
+		// Empty or nil - use empty pq.StringArray
+		tagsArg = pq.StringArray{}
+	}
+	
 	err := s.db.QueryRowContext(ctx, query,
 		req.UserID, req.VendorID, req.Type, req.FileName, req.OriginalURL, req.ThumbnailURL,
 		req.FileSize, req.MimeType, req.Width, req.Height, req.IsPublic,
-		pq.Array(req.Tags), req.Metadata,
+		tagsArg, metadataJSONStr,
 	).Scan(
 		&image.ID, &image.UserID, &image.VendorID, &image.Type, &image.FileName,
 		&image.OriginalURL, &image.ThumbnailURL, &image.FileSize, &image.MimeType,
@@ -104,7 +128,8 @@ func (s *postgresStore) UpdateImage(ctx context.Context, imageID string, req Upd
 	}
 	if req.Tags != nil {
 		setParts = append(setParts, fmt.Sprintf("tags = $%d", argIndex))
-		args = append(args, pq.Array(req.Tags))
+		// Use pq.StringArray for PostgreSQL array type
+		args = append(args, pq.StringArray(req.Tags))
 		argIndex++
 	}
 	if req.Metadata != nil {
@@ -121,6 +146,13 @@ func (s *postgresStore) UpdateImage(ctx context.Context, imageID string, req Upd
 		return s.GetImage(ctx, imageID)
 	}
 
+	// Join all set parts
+	setClause := strings.Join(setParts, ", ")
+	
+	// Add imageID to args
+	args = append(args, imageID)
+	imageIDArgIndex := argIndex
+
 	query := fmt.Sprintf(`
 		UPDATE images 
 		SET %s, updated_at = NOW()
@@ -128,20 +160,7 @@ func (s *postgresStore) UpdateImage(ctx context.Context, imageID string, req Upd
 		RETURNING id, user_id, vendor_id, type, file_name, original_url, thumbnail_url,
 		          file_size, mime_type, width, height, is_public, tags, metadata,
 		          created_at, updated_at`,
-		fmt.Sprintf("%s", setParts[0]), argIndex)
-
-	for i := 1; i < len(setParts); i++ {
-		query = fmt.Sprintf(`
-			UPDATE images 
-			SET %s, updated_at = NOW()
-			WHERE id = $%d
-			RETURNING id, user_id, vendor_id, type, file_name, original_url, thumbnail_url,
-			          file_size, mime_type, width, height, is_public, tags, metadata,
-			          created_at, updated_at`,
-			fmt.Sprintf("%s", setParts[i]), argIndex)
-	}
-
-	args = append(args, imageID)
+		setClause, imageIDArgIndex)
 
 	var image Image
 	var metadataJSON string
@@ -223,7 +242,7 @@ func (s *postgresStore) ListImages(ctx context.Context, req ImageListRequest) (I
 	}
 	if len(req.Tags) > 0 {
 		query += fmt.Sprintf(" AND tags && $%d", argIndex)
-		args = append(args, pq.Array(req.Tags))
+		args = append(args, pq.StringArray(req.Tags))
 		argIndex++
 	}
 
@@ -288,7 +307,7 @@ func (s *postgresStore) ListImages(ctx context.Context, req ImageListRequest) (I
 	}
 	if len(req.Tags) > 0 {
 		countQuery += fmt.Sprintf(" AND tags && $%d", countArgIndex)
-		countArgs = append(countArgs, pq.Array(req.Tags))
+		countArgs = append(countArgs, pq.StringArray(req.Tags))
 		countArgIndex++
 	}
 
@@ -298,20 +317,27 @@ func (s *postgresStore) ListImages(ctx context.Context, req ImageListRequest) (I
 		return ImageListResponse{}, fmt.Errorf("failed to get total count: %w", err)
 	}
 
+	// Calculate total pages
+	totalPages := (total + req.PageSize - 1) / req.PageSize
+	if totalPages == 0 && total > 0 {
+		totalPages = 1
+	}
+
 	return ImageListResponse{
-		Images:   images,
-		Total:    total,
-		Page:     req.Page,
-		PageSize: req.PageSize,
+		Images:     images,
+		Total:      total,
+		Page:       req.Page,
+		PageSize:   req.PageSize,
+		TotalPages: totalPages,
 	}, nil
 }
 
 // CanUploadImage checks if user/vendor can upload image
 func (s *postgresStore) CanUploadImage(ctx context.Context, userID *string, vendorID *string, imageType ImageType, fileSize int64) (bool, error) {
-	if imageType == ImageTypeUser && userID != nil {
+	if imageType == ImageTypeUser && userID != nil && *userID != "" {
 		// For now, users can upload unlimited images
 		return true, nil
-	} else if imageType == ImageTypeVendor && vendorID != nil {
+	} else if imageType == ImageTypeVendor && vendorID != nil && *vendorID != "" {
 		query := `SELECT can_vendor_upload_image($1, true)`
 		var canUpload bool
 		err := s.db.QueryRowContext(ctx, query, *vendorID).Scan(&canUpload)
@@ -331,7 +357,7 @@ func (s *postgresStore) CanUploadImage(ctx context.Context, userID *string, vend
 func (s *postgresStore) GetQuotaStatus(ctx context.Context, userID *string, vendorID *string) (QuotaStatus, error) {
 	var status QuotaStatus
 
-	if userID != nil {
+	if userID != nil && *userID != "" {
 		query := `SELECT * FROM get_user_quota_status($1)`
 		err := s.db.QueryRowContext(ctx, query, *userID).Scan(
 			&status.UserImagesRemaining, &status.PaidImagesRemaining,
@@ -340,7 +366,7 @@ func (s *postgresStore) GetQuotaStatus(ctx context.Context, userID *string, vend
 		if err != nil {
 			return QuotaStatus{}, fmt.Errorf("failed to get user quota status: %w", err)
 		}
-	} else if vendorID != nil {
+	} else if vendorID != nil && *vendorID != "" {
 		query := `SELECT * FROM get_vendor_quota_status($1)`
 		err := s.db.QueryRowContext(ctx, query, *vendorID).Scan(
 			&status.VendorImagesRemaining, &status.PaidImagesRemaining,
@@ -360,26 +386,32 @@ func (s *postgresStore) GetImageStats(ctx context.Context, userID *string, vendo
 	var query string
 	var args []interface{}
 
-	if userID != nil {
+	if userID != nil && *userID != "" {
 		query = `
 			SELECT 
 				COUNT(*) as total_images,
 				COUNT(*) FILTER (WHERE type = 'user') as user_images,
+				0 as vendor_images,
 				COUNT(*) FILTER (WHERE type = 'result') as result_images,
 				COUNT(*) FILTER (WHERE is_public = true) as public_images,
-				SUM(file_size) as total_size_bytes,
+				COUNT(*) FILTER (WHERE is_public = false) as private_images,
+				COALESCE(SUM(file_size), 0) as total_file_size,
+				COALESCE(AVG(file_size), 0) as average_file_size,
 				COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '30 days') as images_last_30_days
 			FROM images 
 			WHERE user_id = $1`
 		args = []interface{}{*userID}
-	} else if vendorID != nil {
+	} else if vendorID != nil && *vendorID != "" {
 		query = `
 			SELECT 
 				COUNT(*) as total_images,
+				0 as user_images,
 				COUNT(*) FILTER (WHERE type = 'vendor') as vendor_images,
 				COUNT(*) FILTER (WHERE type = 'result') as result_images,
 				COUNT(*) FILTER (WHERE is_public = true) as public_images,
-				SUM(file_size) as total_size_bytes,
+				COUNT(*) FILTER (WHERE is_public = false) as private_images,
+				COALESCE(SUM(file_size), 0) as total_file_size,
+				COALESCE(AVG(file_size), 0) as average_file_size,
 				COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '30 days') as images_last_30_days
 			FROM images 
 			WHERE vendor_id = $1`
@@ -388,19 +420,29 @@ func (s *postgresStore) GetImageStats(ctx context.Context, userID *string, vendo
 		return ImageStats{}, errors.New("user ID or vendor ID required")
 	}
 
-	var totalSize sql.NullInt64
+	var totalFileSize sql.NullInt64
+	var averageFileSize sql.NullFloat64
 	err := s.db.QueryRowContext(ctx, query, args...).Scan(
-		&stats.TotalImages, &stats.UserImages, &stats.ResultImages,
-		&stats.PublicImages, &totalSize, &stats.ImagesLast30Days,
+		&stats.TotalImages, &stats.UserImages, &stats.VendorImages, &stats.ResultImages,
+		&stats.PublicImages, &stats.PrivateImages, &totalFileSize, &averageFileSize,
+		&stats.ImagesLast30Days,
 	)
 	if err != nil {
 		return ImageStats{}, fmt.Errorf("failed to get image stats: %w", err)
 	}
 
-	if totalSize.Valid {
-		stats.TotalSizeBytes = totalSize.Int64
+	if totalFileSize.Valid {
+		stats.TotalFileSize = totalFileSize.Int64
+		stats.TotalSizeBytes = totalFileSize.Int64
 	} else {
+		stats.TotalFileSize = 0
 		stats.TotalSizeBytes = 0
+	}
+
+	if averageFileSize.Valid {
+		stats.AverageFileSize = averageFileSize.Float64
+	} else {
+		stats.AverageFileSize = 0.0
 	}
 
 	return stats, nil

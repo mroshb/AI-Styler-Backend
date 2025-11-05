@@ -62,6 +62,11 @@ func NewHandler(store Store, tokens TokenService, rl RateLimiter, smsProvider sm
 	}
 }
 
+// GetTokenService returns the token service for use in middleware
+func (h *Handler) GetTokenService() TokenService {
+	return h.tokens
+}
+
 type sendOtpReq struct {
 	Phone   string `json:"phone"`
 	Purpose string `json:"purpose"`
@@ -251,6 +256,10 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 	if !user.IsPhoneVerified {
 		common.WriteError(w, http.StatusForbidden, "forbidden", "phone not verified", nil)
+		return
+	}
+	if !user.IsActive {
+		common.WriteError(w, http.StatusForbidden, "forbidden", "account is inactive", nil)
 		return
 	}
 	at, rt, expAt, err := h.tokens.IssueTokens(r.Context(), user.ID, user.Phone, user.Role, r.UserAgent())

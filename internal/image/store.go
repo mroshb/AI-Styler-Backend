@@ -3,11 +3,13 @@ package image
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 // DBStore implements the Store interface using PostgreSQL
@@ -33,6 +35,26 @@ func (s *DBStore) CreateImage(ctx context.Context, req CreateImageRequest) (Imag
 	var image Image
 	imageID := uuid.New().String()
 
+	// Handle nil/empty tags - use pq.StringArray
+	var tagsArg interface{}
+	if req.Tags != nil && len(req.Tags) > 0 {
+		tagsArg = pq.StringArray(req.Tags)
+	} else {
+		tagsArg = pq.StringArray{}
+	}
+
+	// Handle nil/empty metadata - convert to JSONB
+	var metadataJSONStr string
+	if req.Metadata != nil && len(req.Metadata) > 0 {
+		metadataBytes, err := json.Marshal(req.Metadata)
+		if err != nil {
+			return Image{}, fmt.Errorf("failed to marshal metadata: %w", err)
+		}
+		metadataJSONStr = string(metadataBytes)
+	} else {
+		metadataJSONStr = "{}"
+	}
+
 	err := s.db.QueryRowContext(ctx, query,
 		imageID,
 		req.UserID,
@@ -46,8 +68,8 @@ func (s *DBStore) CreateImage(ctx context.Context, req CreateImageRequest) (Imag
 		req.Width,
 		req.Height,
 		req.IsPublic,
-		req.Tags,
-		req.Metadata,
+		tagsArg,
+		metadataJSONStr,
 	).Scan(&image.ID, &image.CreatedAt, &image.UpdatedAt)
 
 	if err != nil {
@@ -82,6 +104,7 @@ func (s *DBStore) GetImage(ctx context.Context, imageID string) (Image, error) {
 		WHERE id = $1`
 
 	var image Image
+	var metadataJSON string
 	err := s.db.QueryRowContext(ctx, query, imageID).Scan(
 		&image.ID,
 		&image.UserID,
@@ -95,17 +118,20 @@ func (s *DBStore) GetImage(ctx context.Context, imageID string) (Image, error) {
 		&image.Width,
 		&image.Height,
 		&image.IsPublic,
-		&image.Tags,
-		&image.Metadata,
+		pq.Array(&image.Tags),
+		&metadataJSON,
 		&image.CreatedAt,
 		&image.UpdatedAt,
 	)
-
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return Image{}, fmt.Errorf("image not found")
-		}
 		return Image{}, fmt.Errorf("failed to get image: %w", err)
+	}
+
+	// Parse metadata JSON
+	if metadataJSON != "" {
+		if err := json.Unmarshal([]byte(metadataJSON), &image.Metadata); err != nil {
+			return Image{}, fmt.Errorf("failed to parse metadata: %w", err)
+		}
 	}
 
 	return image, nil
@@ -126,7 +152,7 @@ func (s *DBStore) UpdateImage(ctx context.Context, imageID string, req UpdateIma
 
 	if req.Tags != nil {
 		setParts = append(setParts, fmt.Sprintf("tags = $%d", argIndex))
-		args = append(args, req.Tags)
+		args = append(args, pq.StringArray(req.Tags))
 		argIndex++
 	}
 
@@ -160,6 +186,7 @@ func (s *DBStore) UpdateImage(ctx context.Context, imageID string, req UpdateIma
 	)
 
 	var image Image
+	var metadataJSON string
 	err := s.db.QueryRowContext(ctx, query, args...).Scan(
 		&image.ID,
 		&image.UserID,
@@ -173,8 +200,8 @@ func (s *DBStore) UpdateImage(ctx context.Context, imageID string, req UpdateIma
 		&image.Width,
 		&image.Height,
 		&image.IsPublic,
-		&image.Tags,
-		&image.Metadata,
+		pq.Array(&image.Tags),
+		&metadataJSON,
 		&image.CreatedAt,
 		&image.UpdatedAt,
 	)
@@ -184,6 +211,13 @@ func (s *DBStore) UpdateImage(ctx context.Context, imageID string, req UpdateIma
 			return Image{}, fmt.Errorf("image not found")
 		}
 		return Image{}, fmt.Errorf("failed to update image: %w", err)
+	}
+
+	// Parse metadata JSON
+	if metadataJSON != "" {
+		if err := json.Unmarshal([]byte(metadataJSON), &image.Metadata); err != nil {
+			return Image{}, fmt.Errorf("failed to parse metadata: %w", err)
+		}
 	}
 
 	return image, nil
@@ -242,7 +276,7 @@ func (s *DBStore) ListImages(ctx context.Context, req ImageListRequest) (ImageLi
 
 	if len(req.Tags) > 0 {
 		whereParts = append(whereParts, fmt.Sprintf("tags && $%d", argIndex))
-		args = append(args, req.Tags)
+		args = append(args, pq.StringArray(req.Tags))
 		argIndex++
 	}
 
@@ -289,6 +323,7 @@ func (s *DBStore) ListImages(ctx context.Context, req ImageListRequest) (ImageLi
 	var images []Image
 	for rows.Next() {
 		var image Image
+		var metadataJSON string
 		err := rows.Scan(
 			&image.ID,
 			&image.UserID,
@@ -302,14 +337,22 @@ func (s *DBStore) ListImages(ctx context.Context, req ImageListRequest) (ImageLi
 			&image.Width,
 			&image.Height,
 			&image.IsPublic,
-			&image.Tags,
-			&image.Metadata,
+			pq.Array(&image.Tags),
+			&metadataJSON,
 			&image.CreatedAt,
 			&image.UpdatedAt,
 		)
 		if err != nil {
 			return ImageListResponse{}, fmt.Errorf("failed to scan image: %w", err)
 		}
+
+		// Parse metadata JSON
+		if metadataJSON != "" {
+			if err := json.Unmarshal([]byte(metadataJSON), &image.Metadata); err != nil {
+				return ImageListResponse{}, fmt.Errorf("failed to parse metadata: %w", err)
+			}
+		}
+
 		images = append(images, image)
 	}
 

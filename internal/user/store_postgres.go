@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/lib/pq"
 )
@@ -22,22 +23,40 @@ func NewPostgresStore(db *sql.DB) Store {
 // GetProfile retrieves a user's profile
 func (s *postgresStore) GetProfile(ctx context.Context, userID string) (UserProfile, error) {
 	query := `
-		SELECT id, phone, name, avatar_url, bio, is_phone_verified, is_active,
-		       last_login_at, created_at, updated_at
+		SELECT id, phone, name, avatar_url, bio, role, is_phone_verified, is_active,
+		       last_login_at, free_conversions_used, free_conversions_limit, created_at, updated_at
 		FROM users 
 		WHERE id = $1`
 
 	var profile UserProfile
+	var name sql.NullString
+	var avatarURL sql.NullString
+	var bio sql.NullString
+	var lastLoginAt sql.NullTime
 	err := s.db.QueryRowContext(ctx, query, userID).Scan(
-		&profile.ID, &profile.Phone, &profile.Name, &profile.AvatarURL, &profile.Bio,
-		&profile.IsPhoneVerified, &profile.IsActive, &profile.LastLoginAt,
-		&profile.CreatedAt, &profile.UpdatedAt,
+		&profile.ID, &profile.Phone, &name, &avatarURL, &bio,
+		&profile.Role, &profile.IsPhoneVerified, &profile.IsActive, &lastLoginAt,
+		&profile.FreeConversionsUsed, &profile.FreeConversionsLimit, &profile.CreatedAt, &profile.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return UserProfile{}, errors.New("user not found")
 		}
 		return UserProfile{}, fmt.Errorf("failed to get profile: %w", err)
+	}
+
+	// Handle nullable fields
+	if name.Valid {
+		profile.Name = &name.String
+	}
+	if avatarURL.Valid {
+		profile.AvatarURL = &avatarURL.String
+	}
+	if bio.Valid {
+		profile.Bio = &bio.String
+	}
+	if lastLoginAt.Valid {
+		profile.LastLoginAt = &lastLoginAt.Time
 	}
 
 	return profile, nil
@@ -75,37 +94,44 @@ func (s *postgresStore) UpdateProfile(ctx context.Context, userID string, req Up
 		return s.GetProfile(ctx, userID)
 	}
 
+	args = append(args, userID)
 	query := fmt.Sprintf(`
 		UPDATE users 
 		SET %s, updated_at = NOW()
 		WHERE id = $%d
-		RETURNING id, phone, name, avatar_url, bio, is_phone_verified, is_active,
-		          last_login_at, created_at, updated_at`,
-		fmt.Sprintf("%s", setParts[0]), argIndex)
-
-	for i := 1; i < len(setParts); i++ {
-		query = fmt.Sprintf(`
-			UPDATE users 
-			SET %s, updated_at = NOW()
-			WHERE id = $%d
-			RETURNING id, phone, name, avatar_url, bio, is_phone_verified, is_active,
-			          last_login_at, created_at, updated_at`,
-			fmt.Sprintf("%s", setParts[i]), argIndex)
-	}
-
-	args = append(args, userID)
+		RETURNING id, phone, name, avatar_url, bio, role, is_phone_verified, is_active,
+		          last_login_at, free_conversions_used, free_conversions_limit, created_at, updated_at`,
+		fmt.Sprintf("%s", strings.Join(setParts, ", ")), argIndex)
 
 	var profile UserProfile
+	var name sql.NullString
+	var avatarURL sql.NullString
+	var bio sql.NullString
+	var lastLoginAt sql.NullTime
 	err := s.db.QueryRowContext(ctx, query, args...).Scan(
-		&profile.ID, &profile.Phone, &profile.Name, &profile.AvatarURL, &profile.Bio,
-		&profile.IsPhoneVerified, &profile.IsActive, &profile.LastLoginAt,
-		&profile.CreatedAt, &profile.UpdatedAt,
+		&profile.ID, &profile.Phone, &name, &avatarURL, &bio,
+		&profile.Role, &profile.IsPhoneVerified, &profile.IsActive, &lastLoginAt,
+		&profile.FreeConversionsUsed, &profile.FreeConversionsLimit, &profile.CreatedAt, &profile.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return UserProfile{}, errors.New("user not found")
 		}
 		return UserProfile{}, fmt.Errorf("failed to update profile: %w", err)
+	}
+
+	// Handle nullable fields
+	if name.Valid {
+		profile.Name = &name.String
+	}
+	if avatarURL.Valid {
+		profile.AvatarURL = &avatarURL.String
+	}
+	if bio.Valid {
+		profile.Bio = &bio.String
+	}
+	if lastLoginAt.Valid {
+		profile.LastLoginAt = &lastLoginAt.Time
 	}
 
 	return profile, nil

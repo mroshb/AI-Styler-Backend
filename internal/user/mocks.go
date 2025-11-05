@@ -7,27 +7,28 @@ import (
 
 // MockConversionProcessor implements ConversionProcessor for testing
 type MockConversionProcessor struct {
-	processFunc func(ctx context.Context, conversionID string, inputFileURL string, styleName string) error
+	processFunc func(ctx context.Context, conversionID string, inputFileURL string, styleName string) (string, error)
 }
 
 // NewMockConversionProcessor creates a new mock conversion processor
 func NewMockConversionProcessor() *MockConversionProcessor {
 	return &MockConversionProcessor{
-		processFunc: func(ctx context.Context, conversionID string, inputFileURL string, styleName string) error {
+		processFunc: func(ctx context.Context, conversionID string, inputFileURL string, styleName string) (string, error) {
 			// Simulate processing delay
 			time.Sleep(100 * time.Millisecond)
-			return nil
+			// Return a mock output URL
+			return "https://example.com/output/" + conversionID + ".jpg", nil
 		},
 	}
 }
 
 // ProcessConversion simulates conversion processing
-func (m *MockConversionProcessor) ProcessConversion(ctx context.Context, conversionID string, inputFileURL string, styleName string) error {
+func (m *MockConversionProcessor) ProcessConversion(ctx context.Context, conversionID string, inputFileURL string, styleName string) (string, error) {
 	return m.processFunc(ctx, conversionID, inputFileURL, styleName)
 }
 
 // SetProcessFunc allows setting a custom process function
-func (m *MockConversionProcessor) SetProcessFunc(fn func(ctx context.Context, conversionID string, inputFileURL string, styleName string) error) {
+func (m *MockConversionProcessor) SetProcessFunc(fn func(ctx context.Context, conversionID string, inputFileURL string, styleName string) (string, error)) {
 	m.processFunc = fn
 }
 

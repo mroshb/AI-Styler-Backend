@@ -2,6 +2,7 @@ package image
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -75,7 +76,7 @@ func (h *Handler) UploadImage(w http.ResponseWriter, r *http.Request) {
 			common.WriteError(w, http.StatusBadRequest, "bad_request", err.Error(), nil)
 			return
 		}
-		common.WriteError(w, http.StatusInternalServerError, "server_error", "failed to upload image", nil)
+		common.WriteError(w, http.StatusInternalServerError, "server_error", fmt.Sprintf("failed to upload image: %v", err), nil)
 		return
 	}
 
@@ -157,7 +158,21 @@ func (h *Handler) DeleteImage(w http.ResponseWriter, r *http.Request) {
 
 // ListImages handles GET /images
 func (h *Handler) ListImages(w http.ResponseWriter, r *http.Request) {
+	// Get user/vendor context to filter by owner
+	userID := common.GetUserIDFromContext(r.Context())
+	vendorID := common.GetVendorIDFromContext(r.Context())
+
 	req := parseImageListRequest(r)
+
+	// If user/vendor is authenticated, filter by their images by default
+	// (unless explicitly requested otherwise via query params)
+	if userID != "" && req.UserID == nil {
+		req.UserID = &userID
+	}
+	if vendorID != "" && req.VendorID == nil {
+		req.VendorID = &vendorID
+	}
+
 	response, err := h.service.ListImages(r.Context(), req)
 	if err != nil {
 		common.WriteError(w, http.StatusInternalServerError, "server_error", "failed to list images", nil)
@@ -177,10 +192,14 @@ func (h *Handler) GenerateSignedURL(w http.ResponseWriter, r *http.Request) {
 
 	var req struct {
 		AccessType string `json:"accessType"`
+		ExpiresIn  *int   `json:"expiresIn,omitempty"` // Optional expiration in seconds
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		common.WriteError(w, http.StatusBadRequest, "bad_request", "invalid JSON", nil)
-		return
+	// Body is optional - if not provided, use defaults
+	if r.Body != nil && r.ContentLength > 0 {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			common.WriteError(w, http.StatusBadRequest, "bad_request", "invalid JSON", nil)
+			return
+		}
 	}
 
 	if req.AccessType == "" {
@@ -239,7 +258,7 @@ func (h *Handler) GetImageStats(w http.ResponseWriter, r *http.Request) {
 
 	stats, err := h.service.GetImageStats(r.Context(), &userID, &vendorID)
 	if err != nil {
-		common.WriteError(w, http.StatusInternalServerError, "server_error", "failed to get image stats", nil)
+		common.WriteError(w, http.StatusInternalServerError, "server_error", fmt.Sprintf("failed to get image stats: %v", err), nil)
 		return
 	}
 
@@ -359,10 +378,14 @@ func parseImageUsageHistoryRequest(r *http.Request) ImageUsageHistoryRequest {
 }
 
 func getImageIDFromPath(path string) string {
-	// Extract image ID from path like /images/123 or /images/123/signed-url
-	parts := strings.Split(path, "/")
-	if len(parts) >= 3 && parts[1] == "images" {
-		return parts[2]
+	// Extract image ID from path like /api/images/123 or /images/123 or /api/images/123/signed-url
+	parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
+
+	// Look for "images" in the path
+	for i, part := range parts {
+		if part == "images" && i+1 < len(parts) {
+			return parts[i+1]
+		}
 	}
 	return ""
 }

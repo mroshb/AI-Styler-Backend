@@ -36,9 +36,9 @@ CREATE INDEX IF NOT EXISTS idx_shared_links_user_active ON shared_links(user_id,
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_shared_links_updated_at') THEN
-        CREATE TRIGGER trg_shared_links_updated_at
-        BEFORE UPDATE ON shared_links
-        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_shared_links_updated_at
+BEFORE UPDATE ON shared_links
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
     END IF;
 END $$;
 
@@ -358,14 +358,14 @@ AND sl.expires_at > NOW();
 DO $$ 
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_user') THEN
-        GRANT SELECT, INSERT, UPDATE, DELETE ON shared_links TO app_user;
-        GRANT SELECT, INSERT ON shared_link_access_logs TO app_user;
-        GRANT SELECT ON active_shared_links TO app_user;
-        GRANT EXECUTE ON FUNCTION create_shared_link TO app_user;
-        GRANT EXECUTE ON FUNCTION access_shared_link TO app_user;
-        GRANT EXECUTE ON FUNCTION deactivate_shared_link TO app_user;
-        GRANT EXECUTE ON FUNCTION get_shared_link_stats TO app_user;
-        GRANT EXECUTE ON FUNCTION cleanup_expired_shared_links TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON shared_links TO app_user;
+GRANT SELECT, INSERT ON shared_link_access_logs TO app_user;
+GRANT SELECT ON active_shared_links TO app_user;
+GRANT EXECUTE ON FUNCTION create_shared_link TO app_user;
+GRANT EXECUTE ON FUNCTION access_shared_link TO app_user;
+GRANT EXECUTE ON FUNCTION deactivate_shared_link TO app_user;
+GRANT EXECUTE ON FUNCTION get_shared_link_stats TO app_user;
+GRANT EXECUTE ON FUNCTION cleanup_expired_shared_links TO app_user;
     END IF;
 END $$;
 

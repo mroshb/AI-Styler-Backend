@@ -406,7 +406,7 @@ DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns 
                WHERE table_name = 'payments' AND column_name = 'vendor_id') THEN
-        CREATE INDEX IF NOT EXISTS idx_payments_vendor_id ON payments(vendor_id);
+CREATE INDEX IF NOT EXISTS idx_payments_vendor_id ON payments(vendor_id);
     END IF;
 END $$;
 CREATE INDEX IF NOT EXISTS idx_payments_plan_id ON payments(plan_id);
@@ -431,7 +431,7 @@ DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns 
                WHERE table_name = 'sessions' AND column_name = 'vendor_id') THEN
-        CREATE INDEX IF NOT EXISTS idx_sessions_vendor_id ON sessions(vendor_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_vendor_id ON sessions(vendor_id);
     END IF;
 END $$;
 CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
@@ -441,7 +441,7 @@ DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns 
                WHERE table_name = 'sessions' AND column_name = 'vendor_id') THEN
-        CREATE INDEX IF NOT EXISTS idx_sessions_active_vendor ON sessions(vendor_id) WHERE revoked_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_sessions_active_vendor ON sessions(vendor_id) WHERE revoked_at IS NULL;
     END IF;
 END $$;
 
@@ -457,7 +457,7 @@ DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns 
                WHERE table_name = 'audit_logs' AND column_name = 'vendor_id') THEN
-        CREATE INDEX IF NOT EXISTS idx_audit_logs_vendor_id ON audit_logs(vendor_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_vendor_id ON audit_logs(vendor_id);
     END IF;
 END $$;
 CREATE INDEX IF NOT EXISTS idx_audit_logs_actor_type ON audit_logs(actor_type);
@@ -475,15 +475,15 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_metadata_gin ON audit_logs USING GIN (
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_users_updated_at') THEN
-        CREATE TRIGGER trg_users_updated_at
-        BEFORE UPDATE ON users
-        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_users_updated_at
+BEFORE UPDATE ON users
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
     END IF;
-    
+
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_vendors_updated_at') THEN
-        CREATE TRIGGER trg_vendors_updated_at
-        BEFORE UPDATE ON vendors
-        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_vendors_updated_at
+BEFORE UPDATE ON vendors
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
     END IF;
 END $$;
 
@@ -491,27 +491,27 @@ END $$;
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_images_updated_at') THEN
-        CREATE TRIGGER trg_images_updated_at
-        BEFORE UPDATE ON images
-        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_images_updated_at
+BEFORE UPDATE ON images
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
     END IF;
-    
+
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_albums_updated_at') THEN
-        CREATE TRIGGER trg_albums_updated_at
-        BEFORE UPDATE ON albums
-        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_albums_updated_at
+BEFORE UPDATE ON albums
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
     END IF;
-    
+
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_payments_updated_at') THEN
-        CREATE TRIGGER trg_payments_updated_at
-        BEFORE UPDATE ON payments
-        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_payments_updated_at
+BEFORE UPDATE ON payments
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
     END IF;
-    
+
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_payment_plans_updated_at') THEN
-        CREATE TRIGGER trg_payment_plans_updated_at
-        BEFORE UPDATE ON payment_plans
-        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_payment_plans_updated_at
+BEFORE UPDATE ON payment_plans
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
     END IF;
 END $$;
 

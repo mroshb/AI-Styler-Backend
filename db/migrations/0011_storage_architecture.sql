@@ -303,17 +303,17 @@ BEGIN
     IF TG_OP = 'INSERT' THEN
         -- Insert or update quota
         IF quota_user_id IS NOT NULL THEN
-            INSERT INTO storage_quotas (
-                user_id, vendor_id, quota_type,
-                current_file_count, current_total_size
-            )
-            VALUES (
+        INSERT INTO storage_quotas (
+            user_id, vendor_id, quota_type,
+            current_file_count, current_total_size
+        )
+        VALUES (
                 quota_user_id, NULL, 'total',
                 1, file_size_val
-            )
-            ON CONFLICT (user_id, quota_type)
-            DO UPDATE SET
-                current_file_count = storage_quotas.current_file_count + 1,
+        )
+        ON CONFLICT (user_id, quota_type) 
+        DO UPDATE SET
+            current_file_count = storage_quotas.current_file_count + 1,
                 current_total_size = storage_quotas.current_total_size + file_size_val,
                 updated_at = NOW();
         ELSIF quota_vendor_id IS NOT NULL THEN
@@ -325,11 +325,11 @@ BEGIN
                 NULL, quota_vendor_id, 'total',
                 1, file_size_val
             )
-            ON CONFLICT (vendor_id, quota_type)
-            DO UPDATE SET
-                current_file_count = storage_quotas.current_file_count + 1,
+        ON CONFLICT (vendor_id, quota_type)
+        DO UPDATE SET
+            current_file_count = storage_quotas.current_file_count + 1,
                 current_total_size = storage_quotas.current_total_size + file_size_val,
-                updated_at = NOW();
+            updated_at = NOW();
         END IF;
             
     ELSIF TG_OP = 'DELETE' THEN
@@ -351,9 +351,9 @@ DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'storage_files') THEN
         IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_update_storage_quota') THEN
-            CREATE TRIGGER trg_update_storage_quota
-            AFTER INSERT OR DELETE ON storage_files
-            FOR EACH ROW EXECUTE FUNCTION update_storage_quota();
+CREATE TRIGGER trg_update_storage_quota
+AFTER INSERT OR DELETE ON storage_files
+FOR EACH ROW EXECUTE FUNCTION update_storage_quota();
         END IF;
     END IF;
 END $$;

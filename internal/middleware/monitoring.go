@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"ai-styler/internal/common"
 	"ai-styler/internal/logging"
 	"ai-styler/internal/monitoring"
 	"ai-styler/internal/security"
@@ -193,12 +194,28 @@ func (m *ContextMiddleware) InjectContext() gin.HandlerFunc {
 // UserContext returns a Gin middleware for user context
 func (m *ContextMiddleware) UserContext() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Extract user information from JWT token if present
-		authHeader := c.GetHeader("Authorization")
-		if authHeader != "" {
-			// This would be implemented with proper JWT validation
-			// For now, we'll just set a placeholder
-			c.Set("user_id", "placeholder")
+		// Get user ID from Gin context (set by OptionalAuthMiddleware or JWTAuthMiddleware)
+		// Try both "user_id" and "userID" keys for compatibility
+		userID, exists := c.Get("user_id")
+		if !exists {
+			userID, exists = c.Get("userID")
+		}
+
+		if exists && userID != nil {
+			// Convert to string
+			userIDStr := ""
+			switch v := userID.(type) {
+			case string:
+				userIDStr = v
+			case interface{}:
+				userIDStr = fmt.Sprintf("%v", v)
+			}
+
+			if userIDStr != "" && userIDStr != "placeholder" {
+				// Set user ID in Go context for handlers
+				ctx := common.SetUserIDInContext(c.Request.Context(), userIDStr)
+				c.Request = c.Request.WithContext(ctx)
+			}
 		}
 
 		c.Next()

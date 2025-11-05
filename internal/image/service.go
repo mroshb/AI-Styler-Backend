@@ -417,19 +417,19 @@ func (s *Service) validateUpdateRequest(req UpdateImageRequest) error {
 func (s *Service) determineImageOwnership(userID *string, vendorID *string, imageType ImageType) (ImageType, *string, *string, error) {
 	switch imageType {
 	case ImageTypeUser:
-		if userID == nil {
+		if userID == nil || *userID == "" {
 			return "", nil, nil, errors.New("user ID required for user images")
 		}
 		return ImageTypeUser, userID, nil, nil
 	case ImageTypeVendor:
-		if vendorID == nil {
+		if vendorID == nil || *vendorID == "" {
 			return "", nil, nil, errors.New("vendor ID required for vendor images")
 		}
 		return ImageTypeVendor, nil, vendorID, nil
 	case ImageTypeResult:
-		if userID != nil {
+		if userID != nil && *userID != "" {
 			return ImageTypeResult, userID, nil, nil
-		} else if vendorID != nil {
+		} else if vendorID != nil && *vendorID != "" {
 			return ImageTypeResult, nil, vendorID, nil
 		}
 		return "", nil, nil, errors.New("user ID or vendor ID required for result images")

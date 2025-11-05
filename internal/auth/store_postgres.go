@@ -153,10 +153,10 @@ func (s *postgresStore) CreateUser(ctx context.Context, phone, passwordHash, rol
 
 	// All users (including vendors) are created in users table
 	// Vendors get an additional record in vendors table linked via user_id
-	query = `
+		query = `
 		INSERT INTO users (phone, password_hash, role, name, is_phone_verified, is_active)
 		VALUES ($1, $2, $3, $4, true, true)
-		RETURNING id`
+			RETURNING id`
 	args = []interface{}{phone, passwordHash, role, displayName}
 
 	err := s.db.QueryRowContext(ctx, query, args...).Scan(&userID)
@@ -201,13 +201,13 @@ func (s *postgresStore) GetUserByPhone(ctx context.Context, phone string) (User,
 	err := s.db.QueryRowContext(ctx, query, phone).Scan(
 		&user.ID, &user.Phone, &user.PasswordHash, &name, &avatarURL, &bio,
 		&user.IsPhoneVerified, &user.IsActive, &lastLoginAt, &user.CreatedAt, &role,
-	)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return User{}, errors.New("user not found")
-		}
-		return User{}, fmt.Errorf("failed to get user: %w", err)
-	}
+			)
+			if err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					return User{}, errors.New("user not found")
+				}
+				return User{}, fmt.Errorf("failed to get user: %w", err)
+			}
 
 	// Handle nullable fields
 	if name.Valid {

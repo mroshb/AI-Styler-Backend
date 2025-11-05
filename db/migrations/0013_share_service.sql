@@ -76,7 +76,7 @@ DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns 
                WHERE table_name = 'shared_link_access_logs' AND column_name = 'accessed_at') THEN
-        CREATE INDEX IF NOT EXISTS idx_shared_link_access_logs_accessed_at ON shared_link_access_logs(accessed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_shared_link_access_logs_accessed_at ON shared_link_access_logs(accessed_at DESC);
     END IF;
 END $$;
 CREATE INDEX IF NOT EXISTS idx_shared_link_access_logs_success ON shared_link_access_logs(success);
@@ -90,9 +90,9 @@ CREATE INDEX IF NOT EXISTS idx_shared_link_access_logs_ip_address ON shared_link
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_shared_links_updated_at') THEN
-        CREATE TRIGGER trg_shared_links_updated_at
-        BEFORE UPDATE ON shared_links
-        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_shared_links_updated_at
+BEFORE UPDATE ON shared_links
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
     END IF;
 END $$;
 
@@ -211,19 +211,19 @@ $$ LANGUAGE plpgsql;
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_share_token_not_empty') THEN
-        ALTER TABLE shared_links ADD CONSTRAINT chk_share_token_not_empty CHECK (LENGTH(share_token) > 0);
+ALTER TABLE shared_links ADD CONSTRAINT chk_share_token_not_empty CHECK (LENGTH(share_token) > 0);
     END IF;
-    
+
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_expires_at_future') THEN
-        ALTER TABLE shared_links ADD CONSTRAINT chk_expires_at_future CHECK (expires_at > created_at);
+ALTER TABLE shared_links ADD CONSTRAINT chk_expires_at_future CHECK (expires_at > created_at);
     END IF;
-    
+
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_max_access_count_positive') THEN
-        ALTER TABLE shared_links ADD CONSTRAINT chk_max_access_count_positive CHECK (max_access_count IS NULL OR max_access_count > 0);
+ALTER TABLE shared_links ADD CONSTRAINT chk_max_access_count_positive CHECK (max_access_count IS NULL OR max_access_count > 0);
     END IF;
-    
+
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_access_count_non_negative') THEN
-        ALTER TABLE shared_links ADD CONSTRAINT chk_access_count_non_negative CHECK (access_count >= 0);
+ALTER TABLE shared_links ADD CONSTRAINT chk_access_count_non_negative CHECK (access_count >= 0);
     END IF;
 END $$;
 

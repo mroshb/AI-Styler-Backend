@@ -3,6 +3,7 @@ package image
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -22,18 +23,30 @@ func NewDBUsageTracker(db *sql.DB) *DBUsageTracker {
 
 // RecordUsage records image usage
 func (t *DBUsageTracker) RecordUsage(ctx context.Context, imageID string, userID *string, action string, metadata map[string]interface{}) error {
+	// Convert metadata to JSONB
+	var metadataJSON []byte
+	var err error
+	if metadata != nil && len(metadata) > 0 {
+		metadataJSON, err = json.Marshal(metadata)
+		if err != nil {
+			return fmt.Errorf("failed to marshal metadata: %w", err)
+		}
+	} else {
+		metadataJSON = []byte("{}")
+	}
+
 	query := `
 		INSERT INTO image_usage_history (
 			id, image_id, user_id, action, metadata, created_at
-		) VALUES ($1, $2, $3, $4, $5, $6)`
+		) VALUES ($1, $2, $3, $4, $5::jsonb, $6)`
 
 	usageID := uuid.New().String()
-	_, err := t.db.ExecContext(ctx, query,
+	_, err = t.db.ExecContext(ctx, query,
 		usageID,
 		imageID,
 		userID,
 		action,
-		metadata,
+		string(metadataJSON),
 		time.Now(),
 	)
 
@@ -95,6 +108,7 @@ func (t *DBUsageTracker) GetUsageHistory(ctx context.Context, imageID string, re
 	var history []ImageUsageHistory
 	for rows.Next() {
 		var usage ImageUsageHistory
+		var metadataJSON sql.NullString
 		err := rows.Scan(
 			&usage.ID,
 			&usage.ImageID,
@@ -102,12 +116,23 @@ func (t *DBUsageTracker) GetUsageHistory(ctx context.Context, imageID string, re
 			&usage.Action,
 			&usage.IPAddress,
 			&usage.UserAgent,
-			&usage.Metadata,
+			&metadataJSON,
 			&usage.CreatedAt,
 		)
 		if err != nil {
 			return ImageUsageHistoryResponse{}, fmt.Errorf("failed to scan usage history: %w", err)
 		}
+
+		// Parse metadata JSON
+		if metadataJSON.Valid && metadataJSON.String != "" {
+			if err := json.Unmarshal([]byte(metadataJSON.String), &usage.Metadata); err != nil {
+				// If parsing fails, set empty metadata
+				usage.Metadata = make(map[string]interface{})
+			}
+		} else {
+			usage.Metadata = make(map[string]interface{})
+		}
+
 		history = append(history, usage)
 	}
 

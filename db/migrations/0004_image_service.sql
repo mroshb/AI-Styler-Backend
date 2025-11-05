@@ -91,9 +91,9 @@ CREATE INDEX IF NOT EXISTS idx_images_type_public ON images(type, is_public);
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_images_updated_at') THEN
-        CREATE TRIGGER trg_images_updated_at
-        BEFORE UPDATE ON images
-        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_images_updated_at
+BEFORE UPDATE ON images
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
     END IF;
 END $$;
 
@@ -196,6 +196,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Function to get image quota status for vendor
+-- Drop the old version if it exists (from migration 0003)
+DROP FUNCTION IF EXISTS get_vendor_image_quota_status(UUID) CASCADE;
 CREATE OR REPLACE FUNCTION get_vendor_image_quota_status(p_vendor_id UUID)
 RETURNS TABLE (
     vendor_images_remaining INTEGER,
@@ -257,6 +259,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Function to check if vendor can upload image
+-- Drop the old version if it exists (from migration 0003)
+DROP FUNCTION IF EXISTS can_vendor_upload_image(UUID, BOOLEAN) CASCADE;
 CREATE OR REPLACE FUNCTION can_vendor_upload_image(p_vendor_id UUID, p_type VARCHAR(20), p_file_size BIGINT)
 RETURNS BOOLEAN AS $$
 DECLARE
@@ -279,6 +283,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Function to record an image upload
+-- Drop the old version if it exists (from migration 0003) - old signature: (p_vendor_id UUID, p_album_id UUID, ...)
+DROP FUNCTION IF EXISTS record_image_upload(UUID, UUID, TEXT, TEXT, TEXT, BIGINT, TEXT, INTEGER, INTEGER, BOOLEAN, BOOLEAN, TEXT[]) CASCADE;
 CREATE OR REPLACE FUNCTION record_image_upload(
     p_user_id UUID,
     p_vendor_id UUID,
@@ -344,15 +350,16 @@ BEGIN
     RETURNING id INTO image_id;
     
     -- Update or create quota record
+    IF quota_user_id IS NOT NULL THEN
     INSERT INTO image_quota_tracking (
         user_id, vendor_id, year_month, 
         user_images_used, vendor_images_used, result_images_used, 
         total_images_used, total_file_size
     )
     VALUES (
-        quota_user_id, quota_vendor_id, current_month,
+            quota_user_id, NULL, current_month,
         CASE WHEN p_type = 'user' THEN 1 ELSE 0 END,
-        CASE WHEN p_type = 'vendor' THEN 1 ELSE 0 END,
+            0,
         CASE WHEN p_type = 'result' THEN 1 ELSE 0 END,
         1, p_file_size
     )
@@ -362,7 +369,20 @@ BEGIN
         result_images_used = image_quota_tracking.result_images_used + CASE WHEN p_type = 'result' THEN 1 ELSE 0 END,
         total_images_used = image_quota_tracking.total_images_used + 1,
         total_file_size = image_quota_tracking.total_file_size + p_file_size,
-        updated_at = NOW()
+            updated_at = NOW();
+    ELSIF quota_vendor_id IS NOT NULL THEN
+        INSERT INTO image_quota_tracking (
+            user_id, vendor_id, year_month, 
+            user_images_used, vendor_images_used, result_images_used, 
+            total_images_used, total_file_size
+        )
+        VALUES (
+            NULL, quota_vendor_id, current_month,
+            0,
+            CASE WHEN p_type = 'vendor' THEN 1 ELSE 0 END,
+            CASE WHEN p_type = 'result' THEN 1 ELSE 0 END,
+            1, p_file_size
+        )
     ON CONFLICT (vendor_id, year_month)
     DO UPDATE SET
         vendor_images_used = image_quota_tracking.vendor_images_used + CASE WHEN p_type = 'vendor' THEN 1 ELSE 0 END,
@@ -370,6 +390,7 @@ BEGIN
         total_images_used = image_quota_tracking.total_images_used + 1,
         total_file_size = image_quota_tracking.total_file_size + p_file_size,
         updated_at = NOW();
+    END IF;
     
     -- Record usage history
     INSERT INTO image_usage_history (image_id, user_id, action, metadata)

@@ -21,7 +21,9 @@ import (
 	"ai-styler/internal/worker"
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -346,7 +348,8 @@ func NewWithServices(
 
 	// Protected routes - using passed handlers
 	protected := r.Group("/api")
-	protected.Use(securityMiddleware.OptionalAuthMiddleware())
+	// Use auth handler's authentication middleware for proper token validation
+	protected.Use(authMiddlewareForGin(authService.(*auth.Handler)))
 	protected.Use(contextMiddleware.UserContext())
 	protected.Use(contextMiddleware.VendorContext())
 	protected.Use(contextMiddleware.ConversionContext())
@@ -403,6 +406,60 @@ func NewWithServices(
 	})
 
 	return r
+}
+
+// authMiddlewareForGin converts auth.Handler token validation to Gin middleware
+func authMiddlewareForGin(authHandler *auth.Handler) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+			// Optional auth - allow request to continue without user ID
+			c.Next()
+			return
+		}
+
+		token := strings.TrimPrefix(authHeader, "Bearer ")
+
+		// First try to parse as simple token (userID|role|sessionID format)
+		if userID, role := parseSimpleTokenForAuth(token); userID != "" {
+			c.Set("user_id", userID)
+			if role != "" {
+				c.Set("user_role", role)
+			}
+			c.Next()
+			return
+		}
+
+		// If simple token parsing failed, try to use auth handler's token service
+		claims, err := authHandler.GetTokenService().ValidateAccess(c.Request.Context(), token)
+		if err != nil {
+			// Optional auth - allow request to continue without user ID
+			c.Next()
+			return
+		}
+
+		// Set user ID in Gin context for UserContext middleware to pick up
+		c.Set("user_id", claims.UserID)
+		if claims.Role != "" {
+			c.Set("user_role", claims.Role)
+		}
+		c.Next()
+	}
+}
+
+// parseSimpleTokenForAuth parses a simple base64 encoded token in format: userID|role|sessionID
+func parseSimpleTokenForAuth(token string) (userID, role string) {
+	b, err := base64.StdEncoding.DecodeString(token)
+	if err != nil {
+		return "", ""
+	}
+
+	ss := string(b)
+	parts := strings.Split(ss, "|")
+	if len(parts) >= 2 {
+		return parts[0], parts[1]
+	}
+	return "", ""
 }
 
 func mountAuth(r *gin.Engine) {
@@ -569,9 +626,9 @@ func mountImage(r *gin.RouterGroup) {
 		return
 	}
 
-	// Mount image routes
-	imageGroup := r.Group("/api")
-	image.SetupGinRoutes(imageGroup, imageHandler)
+	// Mount image routes directly on the protected group (which already has /api prefix from parent)
+	// r is already a gin.RouterGroup with all parent middleware applied
+	image.SetupGinRoutes(r, imageHandler)
 }
 
 func mountNotification(r *gin.RouterGroup) {

@@ -15,7 +15,7 @@ func SetupGinRoutes(router *gin.RouterGroup, handler *Handler) {
 	images := router.Group("/images")
 	{
 		images.POST("", handler.UploadImageGin)                      // POST /images
-		images.GET("", handler.ListImagesGin)                        // GET /images
+		images.GET("", common.GinWrap(handler.ListImages))           // GET /images
 		images.GET("/:id", handler.GetImageGin)                      // GET /images/:id
 		images.PUT("/:id", handler.UpdateImageGin)                   // PUT /images/:id
 		images.DELETE("/:id", handler.DeleteImageGin)                // DELETE /images/:id
@@ -24,52 +24,67 @@ func SetupGinRoutes(router *gin.RouterGroup, handler *Handler) {
 	}
 
 	// Quota and statistics
-	router.GET("/quota", handler.GetQuotaStatusGin) // GET /quota
-	router.GET("/stats", handler.GetImageStatsGin)  // GET /stats
+	router.GET("/quota", common.GinWrap(handler.GetQuotaStatus)) // GET /quota
+	router.GET("/stats", common.GinWrap(handler.GetImageStats))  // GET /stats
 }
 
-// Gin handler wrappers
+// Gin handler wrappers for handlers that need path parameters
+
+// UploadImageGin handles POST /images with multipart form
 func (h *Handler) UploadImageGin(c *gin.Context) {
-	// Convert Gin context to http.Request/ResponseWriter
-	// This is a simplified implementation
-	c.JSON(200, gin.H{"message": "Upload image endpoint"})
+	// Gin automatically handles multipart form, so we can use it directly
+	h.UploadImage(c.Writer, c.Request)
 }
 
-func (h *Handler) ListImagesGin(c *gin.Context) {
-	c.JSON(200, gin.H{"message": "List images endpoint"})
-}
-
+// GetImageGin handles GET /images/:id
 func (h *Handler) GetImageGin(c *gin.Context) {
+	// Extract path parameter and set it in request URL for handler
 	imageID := c.Param("id")
-	c.JSON(200, gin.H{"message": "Get image endpoint", "id": imageID})
+	if imageID != "" {
+		// Update the request path to include the ID so handler can extract it
+		c.Request.URL.Path = "/api/images/" + imageID
+	}
+	h.GetImage(c.Writer, c.Request)
 }
 
+// UpdateImageGin handles PUT /images/:id
 func (h *Handler) UpdateImageGin(c *gin.Context) {
+	// Extract path parameter and set it in request URL
 	imageID := c.Param("id")
-	c.JSON(200, gin.H{"message": "Update image endpoint", "id": imageID})
+	if imageID != "" {
+		c.Request.URL.Path = "/api/images/" + imageID
+	}
+	h.UpdateImage(c.Writer, c.Request)
 }
 
+// DeleteImageGin handles DELETE /images/:id
 func (h *Handler) DeleteImageGin(c *gin.Context) {
+	// Extract path parameter and set it in request URL
 	imageID := c.Param("id")
-	c.JSON(200, gin.H{"message": "Delete image endpoint", "id": imageID})
+	if imageID != "" {
+		c.Request.URL.Path = "/api/images/" + imageID
+	}
+	h.DeleteImage(c.Writer, c.Request)
 }
 
+// GenerateSignedURLGin handles POST /images/:id/signed-url
 func (h *Handler) GenerateSignedURLGin(c *gin.Context) {
+	// Extract path parameter and set it in request URL
 	imageID := c.Param("id")
-	c.JSON(200, gin.H{"message": "Generate signed URL endpoint", "id": imageID})
+	if imageID != "" {
+		c.Request.URL.Path = "/api/images/" + imageID + "/signed-url"
+	}
+	h.GenerateSignedURL(c.Writer, c.Request)
 }
 
+// GetImageUsageHistoryGin handles GET /images/:id/usage
 func (h *Handler) GetImageUsageHistoryGin(c *gin.Context) {
+	// Extract path parameter and set it in request URL
 	imageID := c.Param("id")
-	c.JSON(200, gin.H{"message": "Get image usage history endpoint", "id": imageID})
-}
-
-func (h *Handler) GetQuotaStatusGin(c *gin.Context) {
-	c.JSON(200, gin.H{"message": "Get quota status endpoint"})
-}
-
-func (h *Handler) GetImageStatsGin(c *gin.Context) {
-	c.JSON(200, gin.H{"message": "Get image stats endpoint"})
+	if imageID != "" {
+		c.Request.URL.Path = "/api/images/" + imageID + "/usage"
+	}
+	h.GetImageUsageHistory(c.Writer, c.Request)
 }
 
 // SetupRoutes configures the image service routes

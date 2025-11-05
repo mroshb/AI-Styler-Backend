@@ -1,0 +1,2181 @@
+{
+    "info": {
+        "_postman_id": "ai-styler-backend-api",
+        "name": "AI Styler Backend API",
+        "description": "Complete API documentation for AI Styler Backend with auto-save tokens and variables",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+        "_exporter_id": "ai-styler"
+    },
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost:8080",
+            "type": "string"
+        },
+        {
+            "key": "access_token",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "admin_access_token",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "refresh_token",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "user_id",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "phone",
+            "value": "+989123456789",
+            "type": "string"
+        },
+        {
+            "key": "otp_code",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "conversion_id",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "image_id",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "vendor_id",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "share_token",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "payment_id",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "plan_id",
+            "value": "",
+            "type": "string"
+        }
+    ],
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "// Auto-generate phone number if not set",
+                    "if (!pm.collectionVariables.get('phone') || pm.collectionVariables.get('phone') === '') {",
+                    "    const randomPhone = '+989' + Math.floor(Math.random() * 90000000 + 10000000);",
+                    "    pm.collectionVariables.set('phone', randomPhone);",
+                    "}"
+                ]
+            }
+        },
+        {
+            "listen": "test",
+            "script": {
+                "type": "text/javascript",
+                "exec": [
+                    "// Global test to auto-save tokens",
+                    "if (pm.response.code === 200 || pm.response.code === 201) {",
+                    "    try {",
+                    "        const jsonData = pm.response.json();",
+                    "        ",
+                    "        // Save access token",
+                    "        if (jsonData.accessToken) {",
+                    "            pm.collectionVariables.set('access_token', jsonData.accessToken);",
+                    "        }",
+                    "        ",
+                    "        // Save refresh token",
+                    "        if (jsonData.refreshToken) {",
+                    "            pm.collectionVariables.set('refresh_token', jsonData.refreshToken);",
+                    "        }",
+                    "        ",
+                    "        // Save user ID",
+                    "        if (jsonData.userId) {",
+                    "            pm.collectionVariables.set('user_id', jsonData.userId);",
+                    "        } else if (jsonData.user && jsonData.user.id) {",
+                    "            pm.collectionVariables.set('user_id', jsonData.user.id);",
+                    "        }",
+                    "        ",
+                    "        // Save OTP code (only in mock/dev mode)",
+                    "        if (jsonData.code) {",
+                    "            pm.collectionVariables.set('otp_code', jsonData.code);",
+                    "        }",
+                    "    } catch (e) {",
+                    "        // Response might not be JSON",
+                    "    }",
+                    "}"
+                ]
+            }
+        }
+    ],
+    "item": [
+        {
+            "name": "Authentication",
+            "item": [
+                {
+                    "name": "Send OTP",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status code is 200 or 201', function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                                    "});",
+                                    "",
+                                    "pm.test('Response has sent field', function () {",
+                                    "    const jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData).to.have.property('sent');",
+                                    "});",
+                                    "",
+                                    "// Auto-save OTP code if available (mock/dev mode)",
+                                    "if (pm.response.code === 200) {",
+                                    "    try {",
+                                    "        const jsonData = pm.response.json();",
+                                    "        if (jsonData.code) {",
+                                    "            pm.collectionVariables.set('otp_code', jsonData.code);",
+                                    "            console.log('OTP Code saved:', jsonData.code);",
+                                    "        }",
+                                    "    } catch (e) {}",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"phone\": \"{{phone}}\",\n  \"purpose\": \"phone_verify\",\n  \"channel\": \"sms\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/auth/send-otp",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "send-otp"
+                            ]
+                        },
+                        "description": "Send OTP code to phone number for verification"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Verify OTP",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status code is 200', function () {",
+                                    "    pm.expect(pm.response.code).to.equal(200);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"phone\": \"{{phone}}\",\n  \"code\": \"{{otp_code}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/auth/verify-otp",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "verify-otp"
+                            ]
+                        },
+                        "description": "Verify OTP code sent to phone number"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Register",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status code is 201', function () {",
+                                    "    pm.expect(pm.response.code).to.equal(201);",
+                                    "});",
+                                    "",
+                                    "pm.test('Auto-save tokens', function () {",
+                                    "    if (pm.response.code === 201) {",
+                                    "        const jsonData = pm.response.json();",
+                                    "        if (jsonData.accessToken) {",
+                                    "            pm.collectionVariables.set('access_token', jsonData.accessToken);",
+                                    "            console.log('Access token saved');",
+                                    "        }",
+                                    "        if (jsonData.userId) {",
+                                    "            pm.collectionVariables.set('user_id', jsonData.userId);",
+                                    "            console.log('User ID saved:', jsonData.userId);",
+                                    "        }",
+                                    "    }",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"phone\": \"{{phone}}\",\n  \"password\": \"SecurePassword123!\",\n  \"name\": \"John Doe\",\n  \"role\": \"user\",\n  \"autoLogin\": true\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/auth/register",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "register"
+                            ]
+                        },
+                        "description": "Register a new user account"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Login",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status code is 200', function () {",
+                                    "    pm.expect(pm.response.code).to.equal(200);",
+                                    "});",
+                                    "",
+                                    "pm.test('Auto-save tokens and user ID', function () {",
+                                    "    if (pm.response.code === 200) {",
+                                    "        const jsonData = pm.response.json();",
+                                    "        if (jsonData.accessToken) {",
+                                    "            pm.collectionVariables.set('access_token', jsonData.accessToken);",
+                                    "            console.log('Access token saved');",
+                                    "        }",
+                                    "        if (jsonData.refreshToken) {",
+                                    "            pm.collectionVariables.set('refresh_token', jsonData.refreshToken);",
+                                    "            console.log('Refresh token saved');",
+                                    "        }",
+                                    "        if (jsonData.user && jsonData.user.id) {",
+                                    "            pm.collectionVariables.set('user_id', jsonData.user.id);",
+                                    "            console.log('User ID saved:', jsonData.user.id);",
+                                    "        }",
+                                    "    }",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"phone\": \"{{phone}}\",\n  \"password\": \"SecurePassword123!\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/auth/login",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "login"
+                            ]
+                        },
+                        "description": "Login and get access token"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Refresh Token",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status code is 200', function () {",
+                                    "    pm.expect(pm.response.code).to.equal(200);",
+                                    "});",
+                                    "",
+                                    "pm.test('Auto-save new tokens', function () {",
+                                    "    if (pm.response.code === 200) {",
+                                    "        const jsonData = pm.response.json();",
+                                    "        if (jsonData.accessToken) {",
+                                    "            pm.collectionVariables.set('access_token', jsonData.accessToken);",
+                                    "        }",
+                                    "        if (jsonData.refreshToken) {",
+                                    "            pm.collectionVariables.set('refresh_token', jsonData.refreshToken);",
+                                    "        }",
+                                    "    }",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/auth/refresh",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "refresh"
+                            ]
+                        },
+                        "description": "Refresh access token using refresh token"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Logout",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/logout",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "logout"
+                            ]
+                        },
+                        "description": "Logout current session"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Logout All",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/auth/logout-all",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "auth",
+                                "logout-all"
+                            ]
+                        },
+                        "description": "Logout all sessions for current user"
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "User",
+            "item": [
+                {
+                    "name": "Get Profile",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status code is 200', function () {",
+                                    "    pm.expect(pm.response.code).to.equal(200);",
+                                    "});",
+                                    "",
+                                    "pm.test('Auto-save user ID', function () {",
+                                    "    if (pm.response.code === 200) {",
+                                    "        const jsonData = pm.response.json();",
+                                    "        if (jsonData.id) {",
+                                    "            pm.collectionVariables.set('user_id', jsonData.id);",
+                                    "        }",
+                                    "    }",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/user/profile",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "user",
+                                "profile"
+                            ]
+                        },
+                        "description": "Get current user profile"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Profile",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"John Doe\",\n  \"avatar_url\": \"https://example.com/avatar.jpg\",\n  \"bio\": \"Software developer\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/user/profile",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "user",
+                                "profile"
+                            ]
+                        },
+                        "description": "Update current user profile"
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Images",
+            "item": [
+                {
+                    "name": "Upload Image",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status code is 201', function () {",
+                                    "    pm.expect(pm.response.code).to.equal(201);",
+                                    "});",
+                                    "",
+                                    "pm.test('Auto-save image ID', function () {",
+                                    "    if (pm.response.code === 201) {",
+                                    "        const jsonData = pm.response.json();",
+                                    "        if (jsonData.id) {",
+                                    "            pm.collectionVariables.set('image_id', jsonData.id);",
+                                    "            console.log('Image ID saved:', jsonData.id);",
+                                    "        }",
+                                    "    }",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "file",
+                                    "type": "file",
+                                    "src": []
+                                },
+                                {
+                                    "key": "type",
+                                    "value": "user",
+                                    "type": "text",
+                                    "description": "user, vendor, result"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/images",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "images"
+                            ]
+                        },
+                        "description": "Upload a new image"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "List Images",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/images?page=1&pageSize=20&type=user",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "images"
+                            ],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "20"
+                                },
+                                {
+                                    "key": "type",
+                                    "value": "user",
+                                    "description": "user, vendor, result"
+                                }
+                            ]
+                        },
+                        "description": "List all images for current user"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Image",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/images/{{image_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "images",
+                                "{{image_id}}"
+                            ]
+                        },
+                        "description": "Get image details by ID"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Image",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"tags\": [\"tag1\", \"tag2\"],\n  \"is_public\": false\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/images/{{image_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "images",
+                                "{{image_id}}"
+                            ]
+                        },
+                        "description": "Update image metadata"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete Image",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/images/{{image_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "images",
+                                "{{image_id}}"
+                            ]
+                        },
+                        "description": "Delete an image"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Generate Signed URL",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"expires_in\": 3600\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/images/{{image_id}}/signed-url",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "images",
+                                "{{image_id}}",
+                                "signed-url"
+                            ]
+                        },
+                        "description": "Generate a signed URL for image access"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Image Usage History",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/images/{{image_id}}/usage",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "images",
+                                "{{image_id}}",
+                                "usage"
+                            ]
+                        },
+                        "description": "Get usage history for an image"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Quota Status",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/quota",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "quota"
+                            ]
+                        },
+                        "description": "Get image storage quota status"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Image Stats",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/stats",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "stats"
+                            ]
+                        },
+                        "description": "Get image statistics"
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Conversion",
+            "item": [
+                {
+                    "name": "Create Conversion",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status code is 201', function () {",
+                                    "    pm.expect(pm.response.code).to.equal(201);",
+                                    "});",
+                                    "",
+                                    "pm.test('Auto-save conversion ID', function () {",
+                                    "    if (pm.response.code === 201) {",
+                                    "        const jsonData = pm.response.json();",
+                                    "        if (jsonData.id) {",
+                                    "            pm.collectionVariables.set('conversion_id', jsonData.id);",
+                                    "            console.log('Conversion ID saved:', jsonData.id);",
+                                    "        }",
+                                    "    }",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"user_image_id\": \"{{image_id}}\",\n  \"cloth_image_id\": \"{{image_id}}\",\n  \"style_name\": \"vintage\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/convert",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert"
+                            ]
+                        },
+                        "description": "Create a new image conversion request"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Quota Status",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/convert/quota",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert",
+                                "quota"
+                            ]
+                        },
+                        "description": "Get current conversion quota status"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Conversion Metrics",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/convert/metrics",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "convert",
+                                "metrics"
+                            ]
+                        },
+                        "description": "Get conversion metrics and statistics"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "List Conversions",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/conversions?page=1&pageSize=20&status=completed",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "conversions"
+                            ],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "20"
+                                },
+                                {
+                                    "key": "status",
+                                    "value": "completed",
+                                    "description": "pending, processing, completed, failed, cancelled"
+                                }
+                            ]
+                        },
+                        "description": "List all conversions for current user"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Conversion",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/conversion/{{conversion_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "conversion",
+                                "{{conversion_id}}"
+                            ]
+                        },
+                        "description": "Get specific conversion by ID"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Conversion",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"status\": \"completed\",\n  \"result_image_id\": \"{{image_id}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/conversion/{{conversion_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "conversion",
+                                "{{conversion_id}}"
+                            ]
+                        },
+                        "description": "Update conversion details"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete Conversion",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/conversion/{{conversion_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "conversion",
+                                "{{conversion_id}}"
+                            ]
+                        },
+                        "description": "Delete a conversion"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Cancel Conversion",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/conversion/{{conversion_id}}/cancel",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "conversion",
+                                "{{conversion_id}}",
+                                "cancel"
+                            ]
+                        },
+                        "description": "Cancel a pending or processing conversion"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Conversion Status",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/conversion/{{conversion_id}}/status",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "conversion",
+                                "{{conversion_id}}",
+                                "status"
+                            ]
+                        },
+                        "description": "Get processing status of a conversion"
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Vendors",
+            "item": [
+                {
+                    "name": "Get Vendors",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/vendors",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "vendors"
+                            ]
+                        },
+                        "description": "List all vendors"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Vendor",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/vendors/{{vendor_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "vendors",
+                                "{{vendor_id}}"
+                            ]
+                        },
+                        "description": "Get vendor details by ID"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Vendor",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status code is 201', function () {",
+                                    "    pm.expect(pm.response.code).to.equal(201);",
+                                    "});",
+                                    "",
+                                    "pm.test('Auto-save vendor ID', function () {",
+                                    "    if (pm.response.code === 201) {",
+                                    "        const jsonData = pm.response.json();",
+                                    "        if (jsonData.id) {",
+                                    "            pm.collectionVariables.set('vendor_id', jsonData.id);",
+                                    "        }",
+                                    "    }",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"display_name\": \"Vendor Name\",\n  \"company_name\": \"Company Name\",\n  \"status\": \"active\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/vendors",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "vendors"
+                            ]
+                        },
+                        "description": "Create a new vendor"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Vendor",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"display_name\": \"Updated Vendor Name\",\n  \"status\": \"active\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/vendors/{{vendor_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "vendors",
+                                "{{vendor_id}}"
+                            ]
+                        },
+                        "description": "Update vendor details"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete Vendor",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/vendors/{{vendor_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "vendors",
+                                "{{vendor_id}}"
+                            ]
+                        },
+                        "description": "Delete a vendor"
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Payment",
+            "item": [
+                {
+                    "name": "Get Plans",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status code is 200', function () {",
+                                    "    pm.expect(pm.response.code).to.equal(200);",
+                                    "});",
+                                    "",
+                                    "pm.test('Auto-save first plan ID', function () {",
+                                    "    if (pm.response.code === 200) {",
+                                    "        const jsonData = pm.response.json();",
+                                    "        if (Array.isArray(jsonData) && jsonData.length > 0 && jsonData[0].id) {",
+                                    "            pm.collectionVariables.set('plan_id', jsonData[0].id);",
+                                    "            console.log('Plan ID saved:', jsonData[0].id);",
+                                    "        }",
+                                    "    }",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/plans/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "plans",
+                                ""
+                            ]
+                        },
+                        "description": "Get all available payment plans"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get User Active Plan",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/plans/active",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "plans",
+                                "active"
+                            ]
+                        },
+                        "description": "Get current user's active plan"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Create Payment",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status code is 201', function () {",
+                                    "    pm.expect(pm.response.code).to.equal(201);",
+                                    "});",
+                                    "",
+                                    "pm.test('Auto-save payment ID', function () {",
+                                    "    if (pm.response.code === 201) {",
+                                    "        const jsonData = pm.response.json();",
+                                    "        if (jsonData.id) {",
+                                    "            pm.collectionVariables.set('payment_id', jsonData.id);",
+                                    "            console.log('Payment ID saved:', jsonData.id);",
+                                    "        }",
+                                    "    }",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"plan_id\": \"{{plan_id}}\",\n  \"amount_cents\": 99900,\n  \"currency\": \"IRR\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/payments/create",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "payments",
+                                "create"
+                            ]
+                        },
+                        "description": "Create a new payment"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Payment Status",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/payments/{{payment_id}}/status",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "payments",
+                                "{{payment_id}}",
+                                "status"
+                            ]
+                        },
+                        "description": "Get payment status by ID"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Payment History",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/payments/history?page=1&pageSize=20",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "payments",
+                                "history"
+                            ],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "20"
+                                }
+                            ]
+                        },
+                        "description": "Get payment history for current user"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Cancel Payment",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/payments/{{payment_id}}/cancel",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "payments",
+                                "{{payment_id}}",
+                                "cancel"
+                            ]
+                        },
+                        "description": "Cancel a payment"
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Share",
+            "item": [
+                {
+                    "name": "Create Shared Link",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status code is 201', function () {",
+                                    "    pm.expect(pm.response.code).to.equal(201);",
+                                    "});",
+                                    "",
+                                    "pm.test('Auto-save share token', function () {",
+                                    "    if (pm.response.code === 201) {",
+                                    "        const jsonData = pm.response.json();",
+                                    "        if (jsonData.shareToken) {",
+                                    "            pm.collectionVariables.set('share_token', jsonData.shareToken);",
+                                    "            console.log('Share token saved:', jsonData.shareToken);",
+                                    "        }",
+                                    "    }",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"conversion_id\": \"{{conversion_id}}\",\n  \"expires_in\": 300,\n  \"max_access_count\": 10\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/share/create",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "share",
+                                "create"
+                            ]
+                        },
+                        "description": "Create a shareable link for a conversion"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Access Shared Link",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/share/{{share_token}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "share",
+                                "{{share_token}}"
+                            ]
+                        },
+                        "description": "Access a shared link (public endpoint)"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "List User Shared Links",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/share/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "share",
+                                ""
+                            ]
+                        },
+                        "description": "List all shared links for current user"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Deactivate Shared Link",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/share/:id",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "share",
+                                ":id"
+                            ],
+                            "variable": [
+                                {
+                                    "key": "id",
+                                    "value": "share-link-uuid-here"
+                                }
+                            ]
+                        },
+                        "description": "Deactivate a shared link"
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Notifications",
+            "item": [
+                {
+                    "name": "List Notifications",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/notifications?page=1&pageSize=20&unread_only=true",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "notifications"
+                            ],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "pageSize",
+                                    "value": "20"
+                                },
+                                {
+                                    "key": "unread_only",
+                                    "value": "true"
+                                }
+                            ]
+                        },
+                        "description": "List notifications for current user"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Notification",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/notifications/:id",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "notifications",
+                                ":id"
+                            ],
+                            "variable": [
+                                {
+                                    "key": "id",
+                                    "value": "notification-uuid-here"
+                                }
+                            ]
+                        },
+                        "description": "Get notification details by ID"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Mark Notification as Read",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/notifications/:id/read",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "notifications",
+                                ":id",
+                                "read"
+                            ],
+                            "variable": [
+                                {
+                                    "key": "id",
+                                    "value": "notification-uuid-here"
+                                }
+                            ]
+                        },
+                        "description": "Mark a notification as read"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Notification Preferences",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/notifications/preferences",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "notifications",
+                                "preferences"
+                            ]
+                        },
+                        "description": "Get notification preferences"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Notification Preferences",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email_enabled\": true,\n  \"sms_enabled\": false,\n  \"push_enabled\": true\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/notifications/preferences",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "notifications",
+                                "preferences"
+                            ]
+                        },
+                        "description": "Update notification preferences"
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Admin",
+            "item": [
+                {
+                    "name": "Users",
+                    "item": [
+                        {
+                            "name": "Get All Users",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{admin_access_token}}"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/api/admin/users?page=1&pageSize=20",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "admin",
+                                        "users"
+                                    ],
+                                    "query": [
+                                        {
+                                            "key": "page",
+                                            "value": "1"
+                                        },
+                                        {
+                                            "key": "pageSize",
+                                            "value": "20"
+                                        }
+                                    ]
+                                },
+                                "description": "Get all users (admin only)"
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Get User",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{admin_access_token}}"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/api/admin/users/{{user_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "admin",
+                                        "users",
+                                        "{{user_id}}"
+                                    ]
+                                },
+                                "description": "Get user details by ID (admin only)"
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Update User",
+                            "request": {
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{admin_access_token}}"
+                                    },
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"is_active\": true,\n  \"role\": \"user\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{base_url}}/api/admin/users/{{user_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "admin",
+                                        "users",
+                                        "{{user_id}}"
+                                    ]
+                                },
+                                "description": "Update user (admin only)"
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Suspend User",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{admin_access_token}}"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/api/admin/users/{{user_id}}/suspend",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "admin",
+                                        "users",
+                                        "{{user_id}}",
+                                        "suspend"
+                                    ]
+                                },
+                                "description": "Suspend a user (admin only)"
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Activate User",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{admin_access_token}}"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/api/admin/users/{{user_id}}/activate",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "admin",
+                                        "users",
+                                        "{{user_id}}",
+                                        "activate"
+                                    ]
+                                },
+                                "description": "Activate a user (admin only)"
+                            },
+                            "response": []
+                        }
+                    ]
+                },
+                {
+                    "name": "Vendors",
+                    "item": [
+                        {
+                            "name": "Get All Vendors",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{admin_access_token}}"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/api/admin/vendors?page=1&pageSize=20",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "admin",
+                                        "vendors"
+                                    ],
+                                    "query": [
+                                        {
+                                            "key": "page",
+                                            "value": "1"
+                                        },
+                                        {
+                                            "key": "pageSize",
+                                            "value": "20"
+                                        }
+                                    ]
+                                },
+                                "description": "Get all vendors (admin only)"
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Get Vendor",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{admin_access_token}}"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/api/admin/vendors/{{vendor_id}}",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "admin",
+                                        "vendors",
+                                        "{{vendor_id}}"
+                                    ]
+                                },
+                                "description": "Get vendor details by ID (admin only)"
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Suspend Vendor",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{admin_access_token}}"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/api/admin/vendors/{{vendor_id}}/suspend",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "admin",
+                                        "vendors",
+                                        "{{vendor_id}}",
+                                        "suspend"
+                                    ]
+                                },
+                                "description": "Suspend a vendor (admin only)"
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Activate Vendor",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{admin_access_token}}"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/api/admin/vendors/{{vendor_id}}/activate",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "admin",
+                                        "vendors",
+                                        "{{vendor_id}}",
+                                        "activate"
+                                    ]
+                                },
+                                "description": "Activate a vendor (admin only)"
+                            },
+                            "response": []
+                        }
+                    ]
+                },
+                {
+                    "name": "Statistics",
+                    "item": [
+                        {
+                            "name": "Get System Stats",
+                            "request": {
+                                "method": "GET",
+                                "header": [
+                                    {
+                                        "key": "Authorization",
+                                        "value": "Bearer {{admin_access_token}}"
+                                    }
+                                ],
+                                "url": {
+                                    "raw": "{{base_url}}/api/admin/stats",
+                                    "host": [
+                                        "{{base_url}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "admin",
+                                        "stats"
+                                    ]
+                                },
+                                "description": "Get system-wide statistics (admin only)"
+                            },
+                            "response": []
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Health",
+            "item": [
+                {
+                    "name": "Health Check",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/health/",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "health",
+                                ""
+                            ]
+                        },
+                        "description": "General health check endpoint"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Readiness Check",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/health/ready",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "health",
+                                "ready"
+                            ]
+                        },
+                        "description": "Readiness probe endpoint"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Liveness Check",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/health/live",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "health",
+                                "live"
+                            ]
+                        },
+                        "description": "Liveness probe endpoint"
+                    },
+                    "response": []
+                }
+            ]
+        }
+    ]
+}

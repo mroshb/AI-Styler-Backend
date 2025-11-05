@@ -154,6 +154,44 @@ CREATE TABLE IF NOT EXISTS image_usage_history (
     )
 );
 
+-- Add missing columns to existing image_usage_history table
+DO $$ 
+BEGIN
+    -- Add vendor_id if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'image_usage_history' AND column_name = 'vendor_id') THEN
+        ALTER TABLE image_usage_history ADD COLUMN vendor_id UUID REFERENCES vendors(id) ON DELETE SET NULL;
+    END IF;
+    
+    -- Add conversion_id if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'image_usage_history' AND column_name = 'conversion_id') THEN
+        ALTER TABLE image_usage_history ADD COLUMN conversion_id UUID REFERENCES conversions(id) ON DELETE SET NULL;
+    END IF;
+    
+    -- Add session_id if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'image_usage_history' AND column_name = 'session_id') THEN
+        ALTER TABLE image_usage_history ADD COLUMN session_id TEXT;
+    END IF;
+    
+    -- Update action constraint to include new actions if it doesn't match
+    -- Note: We'll drop and recreate the constraint if it exists
+    IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname LIKE '%action%' AND conrelid = 'image_usage_history'::regclass) THEN
+        ALTER TABLE image_usage_history DROP CONSTRAINT IF EXISTS image_usage_history_action_check;
+        ALTER TABLE image_usage_history ADD CONSTRAINT image_usage_history_action_check 
+            CHECK (action IN ('upload', 'view', 'download', 'delete', 'update', 'share', 'convert', 'use_in_conversion'));
+    END IF;
+    
+    -- Add ownership constraint if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_usage_history_actor') THEN
+        ALTER TABLE image_usage_history ADD CONSTRAINT chk_usage_history_actor CHECK (
+            (user_id IS NOT NULL AND vendor_id IS NULL) OR
+            (vendor_id IS NOT NULL AND user_id IS NULL)
+        );
+    END IF;
+END $$;
+
 -- ============================================================================
 -- ALBUMS TABLE (Enhanced for both users and vendors)
 -- ============================================================================
@@ -263,7 +301,7 @@ DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns 
                WHERE table_name = 'conversions' AND column_name = 'vendor_id') THEN
-        CREATE INDEX IF NOT EXISTS idx_conversions_vendor_id ON conversions(vendor_id);
+CREATE INDEX IF NOT EXISTS idx_conversions_vendor_id ON conversions(vendor_id);
     END IF;
 END $$;
 CREATE INDEX IF NOT EXISTS idx_conversions_status ON conversions(status);
@@ -281,7 +319,7 @@ DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns 
                WHERE table_name = 'conversions' AND column_name = 'vendor_id') THEN
-        CREATE INDEX IF NOT EXISTS idx_conversions_vendor_status ON conversions(vendor_id, status);
+CREATE INDEX IF NOT EXISTS idx_conversions_vendor_status ON conversions(vendor_id, status);
     END IF;
 END $$;
 CREATE INDEX IF NOT EXISTS idx_conversions_status_created ON conversions(status, created_at DESC);
@@ -315,7 +353,7 @@ DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns 
                WHERE table_name = 'image_usage_history' AND column_name = 'vendor_id') THEN
-        CREATE INDEX IF NOT EXISTS idx_image_usage_history_vendor_id ON image_usage_history(vendor_id);
+CREATE INDEX IF NOT EXISTS idx_image_usage_history_vendor_id ON image_usage_history(vendor_id);
     END IF;
 END $$;
 CREATE INDEX IF NOT EXISTS idx_image_usage_history_conversion_id ON image_usage_history(conversion_id);
@@ -331,7 +369,7 @@ DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns 
                WHERE table_name = 'image_usage_history' AND column_name = 'vendor_id') THEN
-        CREATE INDEX IF NOT EXISTS idx_image_usage_history_vendor_action ON image_usage_history(vendor_id, action);
+CREATE INDEX IF NOT EXISTS idx_image_usage_history_vendor_action ON image_usage_history(vendor_id, action);
     END IF;
 END $$;
 CREATE INDEX IF NOT EXISTS idx_image_usage_history_action_date ON image_usage_history(action, created_at DESC);
@@ -364,7 +402,7 @@ DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns 
                WHERE table_name = 'conversion_metrics' AND column_name = 'vendor_id') THEN
-        CREATE INDEX IF NOT EXISTS idx_conversion_metrics_vendor_id ON conversion_metrics(vendor_id);
+CREATE INDEX IF NOT EXISTS idx_conversion_metrics_vendor_id ON conversion_metrics(vendor_id);
     END IF;
 END $$;
 CREATE INDEX IF NOT EXISTS idx_conversion_metrics_created_at ON conversion_metrics(created_at);
@@ -387,27 +425,27 @@ $$ LANGUAGE plpgsql;
 DO $$ 
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_conversions_updated_at') THEN
-        CREATE TRIGGER trg_conversions_updated_at
-        BEFORE UPDATE ON conversions
-        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_conversions_updated_at
+BEFORE UPDATE ON conversions
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
     END IF;
-    
+
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_images_updated_at') THEN
-        CREATE TRIGGER trg_images_updated_at
-        BEFORE UPDATE ON images
-        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_images_updated_at
+BEFORE UPDATE ON images
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
     END IF;
-    
+
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_albums_updated_at') THEN
-        CREATE TRIGGER trg_albums_updated_at
-        BEFORE UPDATE ON albums
-        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_albums_updated_at
+BEFORE UPDATE ON albums
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
     END IF;
-    
+
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_conversion_jobs_updated_at') THEN
-        CREATE TRIGGER trg_conversion_jobs_updated_at
-        BEFORE UPDATE ON conversion_jobs
-        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_conversion_jobs_updated_at
+BEFORE UPDATE ON conversion_jobs
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
     END IF;
 END $$;
 
@@ -501,12 +539,12 @@ BEGIN
             RAISE EXCEPTION 'User image not found or does not belong to user';
         END IF;
     ELSIF p_vendor_id IS NOT NULL THEN
-        IF NOT EXISTS (
-            SELECT 1 FROM images 
-            WHERE id = p_user_image_id 
+    IF NOT EXISTS (
+        SELECT 1 FROM images 
+        WHERE id = p_user_image_id 
             AND vendor_id = p_vendor_id
             AND type IN ('vendor', 'result')
-        ) THEN
+    ) THEN
             RAISE EXCEPTION 'Image not found or does not belong to vendor';
         END IF;
     END IF;

@@ -2,6 +2,7 @@ package security
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"strings"
@@ -354,18 +355,46 @@ func (sm *SecurityMiddleware) OptionalAuthMiddleware() gin.HandlerFunc {
 		// Try to authenticate
 		if strings.HasPrefix(authHeader, "Bearer ") {
 			token := strings.TrimPrefix(authHeader, "Bearer ")
-			if claims, err := sm.jwtSigner.Verify(token); err == nil {
-				if userID, ok := claims["sub"].(string); ok {
-					c.Set("user_id", userID)
-				}
-				if role, ok := claims["role"].(string); ok {
+
+			// First try to parse as simple token (userID|role|sessionID format)
+			// This is the format used by simpleTokenService in auth package
+			if userID, role := parseSimpleToken(token); userID != "" {
+				c.Set("user_id", userID)
+				if role != "" {
 					c.Set("user_role", role)
+				}
+			} else {
+				// If simple token parsing failed, try to verify as JWT token
+				claims, err := sm.jwtSigner.Verify(token)
+				if err == nil {
+					// SimpleJWTSigner returns map[string]interface{}
+					if userID, ok := claims["sub"].(string); ok && userID != "" && userID != "user" {
+						c.Set("user_id", userID)
+					}
+					if role, ok := claims["role"].(string); ok {
+						c.Set("user_role", role)
+					}
 				}
 			}
 		}
 
 		c.Next()
 	}
+}
+
+// parseSimpleToken parses a simple base64 encoded token in format: userID|role|sessionID
+func parseSimpleToken(token string) (userID, role string) {
+	b, err := base64.StdEncoding.DecodeString(token)
+	if err != nil {
+		return "", ""
+	}
+
+	ss := string(b)
+	parts := strings.Split(ss, "|")
+	if len(parts) >= 2 {
+		return parts[0], parts[1]
+	}
+	return "", ""
 }
 
 // getClientIP extracts the real client IP address

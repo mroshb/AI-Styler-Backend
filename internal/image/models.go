@@ -113,16 +113,16 @@ type SignedURLResponse struct {
 
 // ImageStats represents image statistics
 type ImageStats struct {
-	TotalImages      int   `json:"totalImages"`
-	UserImages       int   `json:"userImages"`
-	VendorImages     int   `json:"vendorImages"`
-	ResultImages     int   `json:"resultImages"`
-	PublicImages     int   `json:"publicImages"`
-	PrivateImages    int   `json:"privateImages"`
-	TotalFileSize    int64 `json:"totalFileSize"`
-	TotalSizeBytes   int64 `json:"totalSizeBytes"`
-	AverageFileSize  int64 `json:"averageFileSize"`
-	ImagesLast30Days int   `json:"imagesLast30Days"`
+	TotalImages      int     `json:"totalImages"`
+	UserImages       int     `json:"userImages"`
+	VendorImages     int     `json:"vendorImages"`
+	ResultImages     int     `json:"resultImages"`
+	PublicImages     int     `json:"publicImages"`
+	PrivateImages    int     `json:"privateImages"`
+	TotalFileSize    int64   `json:"totalFileSize"`
+	TotalSizeBytes   int64   `json:"totalSizeBytes"`
+	AverageFileSize  float64 `json:"averageFileSize"` // Changed to float64 for PostgreSQL AVG()
+	ImagesLast30Days int     `json:"imagesLast30Days"`
 }
 
 // Constants

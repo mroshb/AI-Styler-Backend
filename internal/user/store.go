@@ -22,15 +22,18 @@ func NewDBStore(db *sql.DB) Store {
 // GetProfile retrieves a user's profile
 func (s *DBStore) GetProfile(ctx context.Context, userID string) (UserProfile, error) {
 	query := `
-		SELECT id, phone, name, avatar_url, bio, role, is_phone_verified, 
+		SELECT id, phone, name, avatar_url, bio, role, is_phone_verified, is_active,
 		       free_conversions_used, free_conversions_limit, created_at, updated_at
 		FROM users 
 		WHERE id = $1`
 
 	var profile UserProfile
+	var name sql.NullString
+	var avatarURL sql.NullString
+	var bio sql.NullString
 	err := s.db.QueryRowContext(ctx, query, userID).Scan(
-		&profile.ID, &profile.Phone, &profile.Name, &profile.AvatarURL, &profile.Bio,
-		&profile.Role, &profile.IsPhoneVerified, &profile.FreeConversionsUsed,
+		&profile.ID, &profile.Phone, &name, &avatarURL, &bio,
+		&profile.Role, &profile.IsPhoneVerified, &profile.IsActive, &profile.FreeConversionsUsed,
 		&profile.FreeConversionsLimit, &profile.CreatedAt, &profile.UpdatedAt,
 	)
 	if err != nil {
@@ -38,6 +41,17 @@ func (s *DBStore) GetProfile(ctx context.Context, userID string) (UserProfile, e
 			return UserProfile{}, fmt.Errorf("user not found")
 		}
 		return UserProfile{}, err
+	}
+
+	// Handle nullable fields
+	if name.Valid {
+		profile.Name = &name.String
+	}
+	if avatarURL.Valid {
+		profile.AvatarURL = &avatarURL.String
+	}
+	if bio.Valid {
+		profile.Bio = &bio.String
 	}
 
 	return profile, nil
@@ -52,13 +66,16 @@ func (s *DBStore) UpdateProfile(ctx context.Context, userID string, req UpdatePr
 		    bio = COALESCE($4, bio),
 		    updated_at = NOW()
 		WHERE id = $1
-		RETURNING id, phone, name, avatar_url, bio, role, is_phone_verified, 
+		RETURNING id, phone, name, avatar_url, bio, role, is_phone_verified, is_active,
 		          free_conversions_used, free_conversions_limit, created_at, updated_at`
 
 	var profile UserProfile
+	var name sql.NullString
+	var avatarURL sql.NullString
+	var bio sql.NullString
 	err := s.db.QueryRowContext(ctx, query, userID, req.Name, req.AvatarURL, req.Bio).Scan(
-		&profile.ID, &profile.Phone, &profile.Name, &profile.AvatarURL, &profile.Bio,
-		&profile.Role, &profile.IsPhoneVerified, &profile.FreeConversionsUsed,
+		&profile.ID, &profile.Phone, &name, &avatarURL, &bio,
+		&profile.Role, &profile.IsPhoneVerified, &profile.IsActive, &profile.FreeConversionsUsed,
 		&profile.FreeConversionsLimit, &profile.CreatedAt, &profile.UpdatedAt,
 	)
 	if err != nil {
@@ -66,6 +83,17 @@ func (s *DBStore) UpdateProfile(ctx context.Context, userID string, req UpdatePr
 			return UserProfile{}, fmt.Errorf("user not found")
 		}
 		return UserProfile{}, err
+	}
+
+	// Handle nullable fields
+	if name.Valid {
+		profile.Name = &name.String
+	}
+	if avatarURL.Valid {
+		profile.AvatarURL = &avatarURL.String
+	}
+	if bio.Valid {
+		profile.Bio = &bio.String
 	}
 
 	return profile, nil
