@@ -19,6 +19,7 @@ type Config struct {
 	Storage    StorageConfig
 	Monitoring MonitoringConfig
 	Gemini     GeminiConfig
+	BazaarPay  BazaarPayConfig
 }
 
 type DatabaseConfig struct {
@@ -100,6 +101,12 @@ type GeminiConfig struct {
 	PreprocessJpegQuality int
 }
 
+type BazaarPayConfig struct {
+	APIKey      string
+	Destination string
+	RedirectURL string
+}
+
 func Load() (*Config, error) {
 	// Load .env file if it exists
 	if err := godotenv.Load(); err != nil {
@@ -175,6 +182,11 @@ func Load() (*Config, error) {
 			MaxRetries:           getEnvAsInt("GEMINI_MAX_RETRIES", 1),
 			PreprocessNoiseLevel: getEnvAsFloat("GEMINI_PREPROCESS_NOISE_LEVEL", 0.02),
 			PreprocessJpegQuality: getEnvAsInt("GEMINI_PREPROCESS_JPEG_QUALITY", 95),
+		},
+		BazaarPay: BazaarPayConfig{
+			APIKey:      getEnv("BAZAARPAY_API_KEY", ""),
+			Destination: getEnv("BAZAARPAY_DESTINATION", "mynaa_bazaar"),
+			RedirectURL: getEnv("BAZAARPAY_REDIRECT_URL", "https://yourdomain.com/api/payments/bazaarpay/status"),
 		},
 	}
 

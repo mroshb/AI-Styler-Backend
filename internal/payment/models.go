@@ -182,6 +182,8 @@ const (
 // Gateway constants
 const (
 	GatewayZarinpal = "zarinpal"
+	GatewayBazaarPay = "bazaarpay"
+	GatewayZibal = "zibal"
 )
 
 // Currency constants
@@ -223,4 +225,126 @@ const (
 	ZarinpalStatusRefunded            = 15
 	ZarinpalStatusRefunding           = 16
 	ZarinpalStatusReversed            = 18
+)
+
+// ================================================================
+// BazaarPay Models
+// ================================================================
+
+// PrePayment - ذخیره اطلاعات قبل از پرداخت
+type PrePayment struct {
+	ID        int       `json:"id" db:"id"`
+	UserID    string    `json:"user_id" db:"user_id"`
+	OrderID   string    `json:"order_id" db:"order_id"`
+	Segment   string    `json:"segment" db:"segment"` // plan, order, shop
+	SegmentID int       `json:"segment_id" db:"segment_id"`
+	PlanID    *string   `json:"plan_id,omitempty" db:"plan_id"`
+	Amount    *int64    `json:"amount,omitempty" db:"amount"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
+}
+
+// PlanPayment - ذخیره پرداخت‌های موفق پلن
+type PlanPayment struct {
+	ID          int       `json:"id" db:"id"`
+	UserID      string    `json:"user_id" db:"user_id"`
+	OrderID     string    `json:"order_id" db:"order_id"`
+	RefNumber   *string   `json:"ref_number,omitempty" db:"ref_number"`
+	Amount      int64     `json:"amount" db:"amount"`
+	CardNumber  *string   `json:"card_number,omitempty" db:"card_number"`
+	Status      int       `json:"status" db:"status"`
+	Result      int       `json:"result" db:"result"`
+	Message     *string   `json:"message,omitempty" db:"message"`
+	Description *string   `json:"description,omitempty" db:"description"`
+	Segment     string    `json:"segment" db:"segment"`
+	SegmentID   int       `json:"segment_id" db:"segment_id"`
+	PaidAt      *string   `json:"paid_at,omitempty" db:"paid_at"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+}
+
+// OrderPayment - ذخیره پرداخت‌های موفق سفارش
+type OrderPayment struct {
+	ID          int       `json:"id" db:"id"`
+	UserID      string    `json:"user_id" db:"user_id"`
+	OrderID     string    `json:"order_id" db:"order_id"`
+	RefNumber   *string   `json:"ref_number,omitempty" db:"ref_number"`
+	Amount      int64     `json:"amount" db:"amount"`
+	CardNumber  *string   `json:"card_number,omitempty" db:"card_number"`
+	Status      int       `json:"status" db:"status"`
+	Result      int       `json:"result" db:"result"`
+	Message     *string   `json:"message,omitempty" db:"message"`
+	Description *string   `json:"description,omitempty" db:"description"`
+	Segment     string    `json:"segment" db:"segment"`
+	SegmentID   int       `json:"segment_id" db:"segment_id"`
+	PaidAt      *string   `json:"paid_at,omitempty" db:"paid_at"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+}
+
+// ShopPayment - ذخیره پرداخت‌های موفق خرید مدل
+type ShopPayment struct {
+	ID          int       `json:"id" db:"id"`
+	UserID      string    `json:"user_id" db:"user_id"`
+	OrderID     string    `json:"order_id" db:"order_id"`
+	RefNumber   *string   `json:"ref_number,omitempty" db:"ref_number"`
+	Amount      int64     `json:"amount" db:"amount"`
+	CardNumber  *string   `json:"card_number,omitempty" db:"card_number"`
+	Status      int       `json:"status" db:"status"`
+	Result      int       `json:"result" db:"result"`
+	Message     *string   `json:"message,omitempty" db:"message"`
+	Description *string   `json:"description,omitempty" db:"description"`
+	Segment     string    `json:"segment" db:"segment"`
+	SegmentID   int       `json:"segment_id" db:"segment_id"`
+	PaidAt      *string   `json:"paid_at,omitempty" db:"paid_at"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+}
+
+// BazaarCheckoutInitRequest - درخواست ایجاد checkout
+type BazaarCheckoutInitRequest struct {
+	Amount      int64  `json:"amount" validate:"required"`
+	Destination string `json:"destination" validate:"required"`
+	ServiceName string `json:"service_name" validate:"required"`
+}
+
+// BazaarCheckoutInitResponse - پاسخ ایجاد checkout
+type BazaarCheckoutInitResponse struct {
+	CheckoutToken string `json:"checkout_token"`
+	PaymentURL    string `json:"payment_url"`
+}
+
+// BazaarTraceRequest - درخواست بررسی وضعیت
+type BazaarTraceRequest struct {
+	CheckoutToken string `json:"checkout_token" validate:"required"`
+}
+
+// BazaarTraceResponse - پاسخ بررسی وضعیت
+type BazaarTraceResponse struct {
+	Status string `json:"status"`
+	// مقادیر ممکن:
+	// - invalid_token
+	// - unpaid
+	// - paid_not_committed
+	// - paid_committed
+	// - refunded
+	// - timed_out
+}
+
+// BazaarCommitRequest - درخواست تایید نهایی
+type BazaarCommitRequest struct {
+	CheckoutToken string `json:"checkout_token" validate:"required"`
+}
+
+// BazaarRefundRequest - درخواست بازگشت پول
+type BazaarRefundRequest struct {
+	CheckoutToken string `json:"checkout_token" validate:"required"`
+	Amount        *int64 `json:"amount,omitempty"` // nil = بازگشت کامل
+}
+
+// BazaarPay Status Constants
+const (
+	BazaarPayStatusInvalidToken             = "invalid_token"
+	BazaarPayStatusUnpaid                   = "unpaid"
+	BazaarPayStatusPaidNotCommitted         = "paid_not_committed"
+	BazaarPayStatusPaidNotCommittedRefunded = "paid_not_committed_refunded"
+	BazaarPayStatusPaidCommitted            = "paid_committed"
+	BazaarPayStatusRefunded                 = "refunded"
+	BazaarPayStatusTimedOut                 = "timed_out"
 )

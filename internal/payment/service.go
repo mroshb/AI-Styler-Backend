@@ -42,8 +42,8 @@ func NewService(
 	}
 }
 
-// CreatePayment creates a new payment for a plan
-func (s *Service) CreatePayment(ctx context.Context, userID string, req CreatePaymentRequest) (CreatePaymentResponse, error) {
+// CreatePaymentWithGateway creates a new payment for a plan with a specific gateway
+func (s *Service) CreatePaymentWithGateway(ctx context.Context, userID string, req CreatePaymentRequest, gateway PaymentGateway) (CreatePaymentResponse, error) {
 	// Validate input
 	if req.PlanID == "" {
 		return CreatePaymentResponse{}, errors.New("plan ID is required")
@@ -85,8 +85,8 @@ func (s *Service) CreatePayment(ctx context.Context, userID string, req CreatePa
 		Amount:        plan.PricePerMonthCents,
 		Currency:      CurrencyIRR,
 		Status:        PaymentStatusPending,
-		PaymentMethod: PaymentMethodZarinpal,
-		Gateway:       s.gateway.GetGatewayName(),
+		PaymentMethod: gateway.GetGatewayName(),
+		Gateway:       gateway.GetGatewayName(),
 		Description:   req.Description,
 		CallbackURL:   s.configService.GetPaymentCallbackURL(),
 		ReturnURL:     req.ReturnURL,
@@ -110,7 +110,7 @@ func (s *Service) CreatePayment(ctx context.Context, userID string, req CreatePa
 	}
 
 	// Send request to gateway
-	gatewayResp, err := s.gateway.CreatePayment(ctx, gatewayReq)
+	gatewayResp, err := gateway.CreatePayment(ctx, gatewayReq)
 	if err != nil {
 		// Update payment status to failed
 		s.store.UpdatePayment(ctx, paymentID, map[string]interface{}{
@@ -138,10 +138,15 @@ func (s *Service) CreatePayment(ctx context.Context, userID string, req CreatePa
 
 	return CreatePaymentResponse{
 		PaymentID:  paymentID,
-		GatewayURL: s.gateway.GetPaymentURL(gatewayResp.TrackID),
+		GatewayURL: gateway.GetPaymentURL(gatewayResp.TrackID),
 		TrackID:    gatewayResp.TrackID,
 		ExpiresAt:  *updatedPayment.ExpiresAt,
 	}, nil
+}
+
+// CreatePayment creates a new payment for a plan using the default gateway
+func (s *Service) CreatePayment(ctx context.Context, userID string, req CreatePaymentRequest) (CreatePaymentResponse, error) {
+	return s.CreatePaymentWithGateway(ctx, userID, req, s.gateway)
 }
 
 // VerifyPayment verifies a payment using webhook data

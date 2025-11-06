@@ -77,6 +77,8 @@ type RateLimiter interface {
 type PaymentConfigService interface {
 	GetZarinpalMerchantID() string
 	GetZarinpalBaseURL() string
+	GetZibalMerchantID() string
+	GetZibalBaseURL() string
 	GetPaymentCallbackURL() string
 	GetPaymentReturnURL() string
 	GetPaymentExpiryMinutes() int

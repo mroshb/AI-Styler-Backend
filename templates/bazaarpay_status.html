@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>وضعیت پرداخت</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Vazir', 'Tahoma', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .success {
+            color: #4CAF50;
+            font-size: 60px;
+            margin: 20px 0;
+        }
+
+        .error {
+            color: #f44336;
+            font-size: 60px;
+            margin: 20px 0;
+        }
+
+        h1 {
+            color: #333;
+            margin: 20px 0;
+            font-size: 24px;
+        }
+
+        p {
+            color: #666;
+            line-height: 1.8;
+            margin: 10px 0;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 20px;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            background: #5568d3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="loading">
+            <div class="spinner"></div>
+            <h1>در حال بررسی وضعیت پرداخت...</h1>
+            <p>لطفاً صبر کنید</p>
+        </div>
+
+        <div id="success" style="display: none;">
+            <div class="success">✅</div>
+            <h1>پرداخت موفق!</h1>
+            <p>پرداخت شما با موفقیت انجام شد.</p>
+            <a href="/" class="btn">بازگشت به صفحه اصلی</a>
+        </div>
+
+        <div id="error" style="display: none;">
+            <div class="error">❌</div>
+            <h1>پرداخت ناموفق</h1>
+            <p id="error-message">متأسفانه پرداخت شما انجام نشد.</p>
+            <a href="/" class="btn">تلاش مجدد</a>
+        </div>
+
+        <div id="pending" style="display: none;">
+            <h1>⏳ در انتظار پرداخت</h1>
+            <p>پرداخت شما هنوز تکمیل نشده است.</p>
+            <button class="btn" onclick="checkStatus()">بررسی مجدد</button>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const checkoutToken = urlParams.get('token') || urlParams.get('checkout_token');
+
+        if (!checkoutToken) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('error-message').textContent = 'توکن پرداخت یافت نشد!';
+        } else {
+            checkStatus();
+        }
+
+        async function checkStatus() {
+            try {
+                const response = await fetch('/api/payments/bazaarpay/check-status', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        checkout_token: checkoutToken
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const status = data.data.status;
+
+                    switch (status) {
+                        case 'paid_committed':
+                        case 'paid_not_committed':
+                            document.getElementById('loading').style.display = 'none';
+                            document.getElementById('success').style.display = 'block';
+                            break;
+
+                        case 'unpaid':
+                            document.getElementById('loading').style.display = 'none';
+                            document.getElementById('pending').style.display = 'block';
+                            break;
+
+                        default:
+                            document.getElementById('loading').style.display = 'none';
+                            document.getElementById('error').style.display = 'block';
+                    }
+                } else {
+                    throw new Error(data.error || 'خطا در بررسی وضعیت');
+                }
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error-message').textContent = error.message;
+            }
+        }
+
+        // Auto-refresh for unpaid status
+        setInterval(() => {
+            if (document.getElementById('pending').style.display !== 'none') {
+                checkStatus();
+            }
+        }, 3000);
+    </script>
+</body>
+</html>
+

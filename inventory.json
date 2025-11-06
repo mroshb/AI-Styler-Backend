@@ -1,0 +1,445 @@
+{
+  "project": {
+    "name": "AI-Styler-Backend",
+    "type": "Go Backend API",
+    "description": "Production-ready GoLang backend API for AI-powered image styling and conversion services",
+    "language": "Go",
+    "go_version": "1.24.4",
+    "module_name": "ai-styler"
+  },
+  "codebase": {
+    "total_go_files": 1927,
+    "main_entrypoint": "main.go",
+    "source_directories": [
+      "internal/",
+      "cmd/",
+      "scripts/"
+    ],
+    "key_files": {
+      "main": "main.go",
+      "config": "internal/config/config.go",
+      "router": "internal/route/router.go",
+      "dockerfile": "Dockerfile",
+      "dockerfile_prod": "Dockerfile.prod",
+      "docker_compose": "docker-compose.yml",
+      "docker_compose_prod": "docker-compose.prod.yml",
+      "nginx_config": "nginx.conf"
+    }
+  },
+  "architecture": {
+    "pattern": "Monolithic with service separation",
+    "framework": "Gin",
+    "services": [
+      {
+        "name": "auth",
+        "path": "internal/auth/",
+        "description": "Authentication and authorization service"
+      },
+      {
+        "name": "user",
+        "path": "internal/user/",
+        "description": "User management service"
+      },
+      {
+        "name": "vendor",
+        "path": "internal/vendors/",
+        "description": "Vendor management service"
+      },
+      {
+        "name": "conversion",
+        "path": "internal/conversion/",
+        "description": "Image conversion service"
+      },
+      {
+        "name": "image",
+        "path": "internal/image/",
+        "description": "Image processing and storage service"
+      },
+      {
+        "name": "payment",
+        "path": "internal/payment/",
+        "description": "Payment processing service"
+      },
+      {
+        "name": "worker",
+        "path": "internal/worker/",
+        "description": "Background job processing service"
+      },
+      {
+        "name": "notification",
+        "path": "internal/notification/",
+        "description": "Notification service (SMS, Email, Telegram, WebSocket)"
+      },
+      {
+        "name": "admin",
+        "path": "internal/admin/",
+        "description": "Admin panel service"
+      },
+      {
+        "name": "share",
+        "path": "internal/share/",
+        "description": "Share link service"
+      },
+      {
+        "name": "monitoring",
+        "path": "internal/monitoring/",
+        "description": "Monitoring and observability service"
+      },
+      {
+        "name": "security",
+        "path": "internal/security/",
+        "description": "Security utilities and middleware"
+      },
+      {
+        "name": "storage",
+        "path": "internal/storage/",
+        "description": "File storage service"
+      }
+    ]
+  },
+  "dependencies": {
+    "total_count": 100,
+    "direct_dependencies": [
+      "github.com/getsentry/sentry-go",
+      "github.com/gin-gonic/gin",
+      "github.com/go-redis/redis/v8",
+      "github.com/golang-jwt/jwt/v5",
+      "github.com/google/uuid",
+      "github.com/joho/godotenv",
+      "github.com/lib/pq",
+      "github.com/sirupsen/logrus",
+      "go.opentelemetry.io/otel",
+      "go.opentelemetry.io/otel/trace"
+    ],
+    "key_dependencies": {
+      "web_framework": "github.com/gin-gonic/gin v1.10.0",
+      "database_driver": "github.com/lib/pq v1.10.9",
+      "redis_client": "github.com/go-redis/redis/v8 v8.11.5",
+      "jwt": "github.com/golang-jwt/jwt/v5 v5.3.0",
+      "logging": "github.com/sirupsen/logrus v1.9.3",
+      "env_loader": "github.com/joho/godotenv v1.5.1",
+      "error_tracking": "github.com/getsentry/sentry-go v0.27.0",
+      "tracing": "go.opentelemetry.io/otel v1.38.0",
+      "crypto": "golang.org/x/crypto v0.41.0",
+      "validation": "github.com/go-playground/validator/v10 v10.20.0"
+    }
+  },
+  "database": {
+    "type": "PostgreSQL",
+    "version_requirement": "13+",
+    "migrations": {
+      "directory": "db/migrations/",
+      "count": 16,
+      "files": [
+        "0001_auth.sql",
+        "0002_user_service.sql",
+        "0003_vendor_service.sql",
+        "0004_image_service.sql",
+        "0005_conversion_service.sql",
+        "0006_payment_service.sql",
+        "0007_admin_service.sql",
+        "0008_notification_service.sql",
+        "0009_comprehensive_schema.sql",
+        "0010_conversions_images_schema.sql",
+        "0011_storage_architecture.sql",
+        "0012_share_service.sql",
+        "0013_share_service.sql",
+        "0014_worker_service.sql",
+        "0015_fix_create_conversion_function.sql",
+        "0016_bazaarpay_schema.sql"
+      ]
+    },
+    "extensions": [
+      "pgcrypto"
+    ],
+    "main_tables": [
+      "users",
+      "vendors",
+      "images",
+      "conversions",
+      "payments",
+      "sessions",
+      "otps",
+      "audit_logs",
+      "workers",
+      "shares"
+    ]
+  },
+  "cache": {
+    "type": "Redis",
+    "version": "7+",
+    "usage": [
+      "Session storage",
+      "Rate limiting",
+      "Caching"
+    ]
+  },
+  "external_integrations": {
+    "ai_services": [
+      {
+        "name": "Google Gemini",
+        "api": "generativelanguage.googleapis.com",
+        "model": "gemini-pro-vision",
+        "config_path": "internal/config/config.go (GeminiConfig)",
+        "worker_path": "internal/worker/gemini.go"
+      }
+    ],
+    "payment_gateways": [
+      {
+        "name": "Zarinpal",
+        "base_url": "https://api.zarinpal.com",
+        "config_path": "internal/payment/config.go"
+      },
+      {
+        "name": "Zibal",
+        "base_url": "https://gateway.zibal.ir",
+        "config_path": "internal/payment/config.go"
+      },
+      {
+        "name": "BazaarPay",
+        "base_url": "https://api.bazaar-pay.ir/badje/v1",
+        "config_path": "internal/payment/bazaarpay.go"
+      }
+    ],
+    "sms_providers": [
+      {
+        "name": "SMS.ir",
+        "config_path": "internal/sms/sms_ir.go",
+        "config_env": "SMS_PROVIDER=sms_ir"
+      }
+    ],
+    "notification_channels": [
+      {
+        "type": "Email",
+        "provider": "SMTP",
+        "default_host": "smtp.gmail.com",
+        "config_path": "internal/notification/email.go"
+      },
+      {
+        "type": "Telegram",
+        "config_path": "internal/notification/telegram.go",
+        "config_env": "TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID"
+      },
+      {
+        "type": "WebSocket",
+        "port": 8081,
+        "config_path": "internal/notification/websocket.go"
+      }
+    ],
+    "monitoring_services": [
+      {
+        "name": "Sentry",
+        "config_env": "SENTRY_DSN",
+        "config_path": "internal/monitoring/sentry.go"
+      },
+      {
+        "name": "Prometheus",
+        "type": "Metrics collection",
+        "config": "docker-compose.yml (optional profile)"
+      },
+      {
+        "name": "Grafana",
+        "type": "Visualization",
+        "config": "docker-compose.yml (optional profile)"
+      }
+    ]
+  },
+  "configuration_sources": {
+    "primary": "Environment variables via godotenv",
+    "config_file": "internal/config/config.go",
+    "env_file": ".env (gitignored)",
+    "env_example": "Not found (needs creation)",
+    "docker_compose": [
+      "docker-compose.yml",
+      "docker-compose.prod.yml",
+      "docker-compose.test.yml"
+    ],
+    "secret_managers": "None detected (uses environment variables only)",
+    "config_sections": [
+      "Database",
+      "Server",
+      "JWT",
+      "Redis",
+      "SMS",
+      "Security",
+      "RateLimit",
+      "Storage",
+      "Monitoring",
+      "Gemini",
+      "BazaarPay"
+    ]
+  },
+  "infrastructure": {
+    "containerization": {
+      "dockerfile": "Dockerfile",
+      "dockerfile_prod": "Dockerfile.prod",
+      "base_image": "golang:1.24 (builder), debian:bookworm-slim (production)",
+      "non_root_user": "styler (uid 1001)",
+      "exposed_port": 8080
+    },
+    "reverse_proxy": {
+      "type": "Nginx",
+      "config_file": "nginx.conf",
+      "ports": {
+        "http": 8080,
+        "https": 443
+      },
+      "rate_limiting": "Configured (api: 10r/s, auth: 5r/s)"
+    },
+    "deployment": {
+      "scripts": [
+        "scripts/deploy-prod.sh",
+        "scripts/deploy-windows.sh"
+      ],
+      "systemd_service": "deployment/ai-styler.service",
+      "windows_service": "deployment/install-service.ps1",
+      "iis_config": "deployment/web.config"
+    },
+    "ci_cd": {
+      "github_workflows": "Not found",
+      "gitlab_ci": "Not found",
+      "status": "No CI/CD configuration detected"
+    }
+  },
+  "api_endpoints": {
+    "authentication": [
+      "POST /auth/send-otp",
+      "POST /auth/verify-otp",
+      "POST /auth/register",
+      "POST /auth/login",
+      "POST /auth/refresh",
+      "POST /auth/logout",
+      "POST /auth/logout-all"
+    ],
+    "user": [
+      "GET /api/user/profile",
+      "PUT /api/user/profile",
+      "GET /api/user/conversions",
+      "GET /api/user/quota"
+    ],
+    "vendor": [
+      "GET /api/vendor/profile",
+      "POST /api/vendor/profile",
+      "PUT /api/vendor/profile",
+      "GET /api/vendor/albums",
+      "POST /api/vendor/albums",
+      "GET /api/vendor/images",
+      "POST /api/vendor/images"
+    ],
+    "conversion": [
+      "POST /api/conversions",
+      "GET /api/conversions",
+      "GET /api/conversions/:id",
+      "PUT /api/conversions/:id",
+      "DELETE /api/conversions/:id"
+    ],
+    "payment": [
+      "POST /api/payments/create",
+      "GET /api/payments/:id/status",
+      "GET /api/payments/history",
+      "DELETE /api/payments/:id/cancel",
+      "POST /api/payments/webhooks/notify",
+      "POST /api/payments/bazaarpay/create",
+      "GET /api/payments/bazaarpay/status"
+    ],
+    "admin": [
+      "GET /api/admin/users",
+      "GET /api/admin/vendors",
+      "GET /api/admin/stats",
+      "POST /api/admin/plans"
+    ],
+    "health": [
+      "GET /health",
+      "GET /api/health",
+      "GET /api/metrics",
+      "GET /api/status"
+    ],
+    "documentation": [
+      "GET /api/docs",
+      "GET /api/docs/openapi.json"
+    ]
+  },
+  "security_features": {
+    "authentication": {
+      "method": "JWT",
+      "algorithm": "HS256",
+      "access_token_ttl": "30 days (default)",
+      "refresh_token_ttl": "90 days (default)",
+      "session_management": "PostgreSQL-backed sessions",
+      "password_hashing": "Argon2 and BCrypt"
+    },
+    "authorization": {
+      "roles": ["user", "vendor", "admin"],
+      "middleware": "internal/security/middleware.go"
+    },
+    "rate_limiting": {
+      "implementation": "In-memory and Redis-backed",
+      "config": "internal/config/config.go (RateLimitConfig)"
+    },
+    "cors": {
+      "enabled": true,
+      "allowed_origins": ["*"],
+      "allowed_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      "allowed_headers": ["*"],
+      "credentials": true
+    },
+    "security_headers": {
+      "enabled": true,
+      "headers": [
+        "X-Content-Type-Options: nosniff",
+        "X-Frame-Options: DENY",
+        "X-XSS-Protection: 1; mode=block",
+        "Referrer-Policy: strict-origin-when-cross-origin",
+        "Content-Security-Policy: default-src 'self'",
+        "Strict-Transport-Security: max-age=31536000; includeSubDomains"
+      ]
+    }
+  },
+  "storage": {
+    "type": "Local filesystem",
+    "base_path": "./uploads (configurable via STORAGE_PATH)",
+    "backup_path": "./uploads/backup",
+    "max_file_size": "10MB (configurable)",
+    "allowed_types": [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/gif",
+      "image/webp"
+    ],
+    "signed_urls": {
+      "enabled": true,
+      "ttl": "1 hour (configurable)"
+    }
+  },
+  "logging": {
+    "framework": "logrus",
+    "format": "JSON (structured)",
+    "levels": ["DEBUG", "INFO", "WARN", "ERROR", "FATAL"],
+    "output": "stdout",
+    "correlation_ids": "Supported via context"
+  },
+  "testing": {
+    "test_files": "Multiple *_test.go files across services",
+    "test_scripts": [
+      "scripts/run_tests.sh",
+      "scripts/run_tests_with_db.sh",
+      "scripts/test_without_db.sh"
+    ],
+    "test_db_setup": "scripts/setup_test_db.sh"
+  },
+  "webhooks": {
+    "payment_webhooks": [
+      "POST /api/payments/webhooks/notify (Zarinpal/Zibal)",
+      "GET /api/payments/bazaarpay/status (BazaarPay callback)"
+    ]
+  },
+  "runtime_requirements": {
+    "go_version": "1.24.4",
+    "postgresql_version": "13+",
+    "redis_version": "7+",
+    "docker": "Required for containerized deployment",
+    "nginx": "Optional (reverse proxy)"
+  }
+}
+

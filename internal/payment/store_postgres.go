@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/lib/pq"
 )
@@ -114,12 +115,29 @@ func (s *postgresStore) GetPaymentByTrackID(ctx context.Context, trackID string)
 
 // UpdatePayment updates a payment
 func (s *postgresStore) UpdatePayment(ctx context.Context, paymentID string, updates map[string]interface{}) (Payment, error) {
+	// Whitelist of allowed payment fields to prevent SQL injection
+	allowedFields := map[string]bool{
+		"status":              true,
+		"gateway_track_id":    true,
+		"gateway_ref_number":  true,
+		"gateway_card_number": true,
+		"description":         true,
+		"callback_url":        true,
+		"return_url":          true,
+		"paid_at":             true,
+		"expires_at":          true,
+	}
+
 	// Build dynamic query
 	setParts := []string{}
 	args := []interface{}{}
 	argIndex := 1
 
 	for key, value := range updates {
+		// Validate field name to prevent SQL injection
+		if !allowedFields[key] {
+			return Payment{}, fmt.Errorf("invalid field name: %s", key)
+		}
 		setParts = append(setParts, fmt.Sprintf("%s = $%d", key, argIndex))
 		args = append(args, value)
 		argIndex++
@@ -129,6 +147,9 @@ func (s *postgresStore) UpdatePayment(ctx context.Context, paymentID string, upd
 		return s.GetPayment(ctx, paymentID)
 	}
 
+	// Join all set parts with commas
+	setClause := strings.Join(setParts, ", ")
+
 	query := fmt.Sprintf(`
 		UPDATE payments 
 		SET %s, updated_at = NOW()
@@ -137,19 +158,7 @@ func (s *postgresStore) UpdatePayment(ctx context.Context, paymentID string, upd
 		          payment_method, gateway, gateway_track_id, gateway_ref_number,
 		          gateway_card_number, description, callback_url, return_url,
 		          created_at, updated_at, paid_at, expires_at`,
-		fmt.Sprintf("%s", setParts[0]), argIndex)
-
-	for i := 1; i < len(setParts); i++ {
-		query = fmt.Sprintf(`
-			UPDATE payments 
-			SET %s, updated_at = NOW()
-			WHERE id = $%d
-			RETURNING id, user_id, vendor_id, plan_id, amount, currency, status,
-			          payment_method, gateway, gateway_track_id, gateway_ref_number,
-			          gateway_card_number, description, callback_url, return_url,
-			          created_at, updated_at, paid_at, expires_at`,
-			fmt.Sprintf("%s", setParts[i]), argIndex)
-	}
+		setClause, argIndex)
 
 	args = append(args, paymentID)
 
@@ -313,12 +322,28 @@ func (s *postgresStore) CreatePlan(ctx context.Context, plan PaymentPlan) (Payme
 
 // UpdatePlan updates a payment plan
 func (s *postgresStore) UpdatePlan(ctx context.Context, planID string, updates map[string]interface{}) (PaymentPlan, error) {
+	// Whitelist of allowed plan fields to prevent SQL injection
+	allowedFields := map[string]bool{
+		"name":                      true,
+		"display_name":              true,
+		"description":               true,
+		"price_per_month_cents":     true,
+		"monthly_conversions_limit": true,
+		"monthly_images_limit":      true,
+		"features":                  true,
+		"is_active":                 true,
+	}
+
 	// Build dynamic query
 	setParts := []string{}
 	args := []interface{}{}
 	argIndex := 1
 
 	for key, value := range updates {
+		// Validate field name to prevent SQL injection
+		if !allowedFields[key] {
+			return PaymentPlan{}, fmt.Errorf("invalid field name: %s", key)
+		}
 		setParts = append(setParts, fmt.Sprintf("%s = $%d", key, argIndex))
 		args = append(args, value)
 		argIndex++
@@ -328,6 +353,9 @@ func (s *postgresStore) UpdatePlan(ctx context.Context, planID string, updates m
 		return s.GetPlan(ctx, planID)
 	}
 
+	// Join all set parts with commas
+	setClause := strings.Join(setParts, ", ")
+
 	query := fmt.Sprintf(`
 		UPDATE payment_plans 
 		SET %s, updated_at = NOW()
@@ -335,18 +363,7 @@ func (s *postgresStore) UpdatePlan(ctx context.Context, planID string, updates m
 		RETURNING id, name, display_name, description, price_per_month_cents,
 		          monthly_conversions_limit, monthly_images_limit, features, is_active,
 		          created_at, updated_at`,
-		fmt.Sprintf("%s", setParts[0]), argIndex)
-
-	for i := 1; i < len(setParts); i++ {
-		query = fmt.Sprintf(`
-			UPDATE payment_plans 
-			SET %s, updated_at = NOW()
-			WHERE id = $%d
-			RETURNING id, name, display_name, description, price_per_month_cents,
-			          monthly_conversions_limit, monthly_images_limit, features, is_active,
-			          created_at, updated_at`,
-			fmt.Sprintf("%s", setParts[i]), argIndex)
-	}
+		setClause, argIndex)
 
 	args = append(args, planID)
 

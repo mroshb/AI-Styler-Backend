@@ -179,7 +179,10 @@ func main() {
 	_, vendorHandler := vendors.WireVendorService(db)
 	_, conversionHandler := conversion.WireConversionService(db)
 	_, imageHandler := image.WireImageService(db)
-	_, paymentHandler := payment.WirePaymentService(db)
+	paymentService, _ := payment.WirePaymentService(db)
+	// Create BazaarPay service and update handler
+	bazaarPayService := payment.NewBazaarPayService(db)
+	paymentHandler := payment.NewHandlerWithBazaarPay(paymentService, bazaarPayService)
 	_, shareHandler := share.WireShareService(db)
 	_, adminHandler := admin.WireAdminService(db)
 	_, notificationHandler := notification.WireNotificationService(db)

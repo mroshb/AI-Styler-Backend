@@ -229,6 +229,14 @@ func (m *MockConfigService) GetZarinpalBaseURL() string {
 	return "https://api.zarinpal.com"
 }
 
+func (m *MockConfigService) GetZibalMerchantID() string {
+	return "test-merchant-id"
+}
+
+func (m *MockConfigService) GetZibalBaseURL() string {
+	return "https://gateway.zibal.ir"
+}
+
 func (m *MockConfigService) GetPaymentCallbackURL() string {
 	return "https://example.com/callback"
 }

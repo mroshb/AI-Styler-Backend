@@ -1,0 +1,2064 @@
+{
+	"Golang errors": {
+		"./main.go": [
+			{
+				"line": 0,
+				"column": 0,
+				"error": "importing dir \"./main.go\": cannot find package \".\" in:\n\tmain.go"
+			}
+		]
+	},
+	"Issues": [
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "190",
+				"url": "https://cwe.mitre.org/data/definitions/190.html"
+			},
+			"rule_id": "G115",
+			"details": "integer overflow conversion uint32 -\u003e uint8",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/worker/gemini.go",
+			"code": "807: \n808: \t\t\trgba.Set(x, y, color.RGBA{R: newR, G: newG, B: newB, A: uint8(a \u003e\u003e 8)})\n809: \t\t}\n",
+			"line": "808",
+			"column": "65",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "190",
+				"url": "https://cwe.mitre.org/data/definitions/190.html"
+			},
+			"rule_id": "G115",
+			"details": "integer overflow conversion int -\u003e uint8",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/worker/gemini.go",
+			"code": "805: \t\t\tnewG := uint8(clamp(g8+noiseG, 0, 255))\n806: \t\t\tnewB := uint8(clamp(b8+noiseB, 0, 255))\n807: \n",
+			"line": "806",
+			"column": "17",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "190",
+				"url": "https://cwe.mitre.org/data/definitions/190.html"
+			},
+			"rule_id": "G115",
+			"details": "integer overflow conversion int -\u003e uint8",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/worker/gemini.go",
+			"code": "804: \t\t\tnewR := uint8(clamp(r8+noiseR, 0, 255))\n805: \t\t\tnewG := uint8(clamp(g8+noiseG, 0, 255))\n806: \t\t\tnewB := uint8(clamp(b8+noiseB, 0, 255))\n",
+			"line": "805",
+			"column": "17",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "190",
+				"url": "https://cwe.mitre.org/data/definitions/190.html"
+			},
+			"rule_id": "G115",
+			"details": "integer overflow conversion int -\u003e uint8",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/worker/gemini.go",
+			"code": "803: \n804: \t\t\tnewR := uint8(clamp(r8+noiseR, 0, 255))\n805: \t\t\tnewG := uint8(clamp(g8+noiseG, 0, 255))\n",
+			"line": "804",
+			"column": "17",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "190",
+				"url": "https://cwe.mitre.org/data/definitions/190.html"
+			},
+			"rule_id": "G115",
+			"details": "integer overflow conversion int -\u003e uint8",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/config/config.go",
+			"code": "151: \t\t\tArgon2Iterations:  uint32(getEnvAsInt(\"ARGON2_ITERATIONS\", 3)),\n152: \t\t\tArgon2Parallelism: uint8(getEnvAsInt(\"ARGON2_PARALLELISM\", 2)),\n153: \t\t\tArgon2SaltLength:  uint32(getEnvAsInt(\"ARGON2_SALT_LENGTH\", 16)),\n",
+			"line": "152",
+			"column": "28",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "190",
+				"url": "https://cwe.mitre.org/data/definitions/190.html"
+			},
+			"rule_id": "G115",
+			"details": "integer overflow conversion int -\u003e uint32",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/security/security.go",
+			"code": "184: \t\tsaltLength:  uint32(len(salt)),\n185: \t\tkeyLength:   uint32(len(hash)),\n186: \t}\n",
+			"line": "185",
+			"column": "22",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "190",
+				"url": "https://cwe.mitre.org/data/definitions/190.html"
+			},
+			"rule_id": "G115",
+			"details": "integer overflow conversion int -\u003e uint32",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/security/security.go",
+			"code": "183: \t\tparallelism: parallelism,\n184: \t\tsaltLength:  uint32(len(salt)),\n185: \t\tkeyLength:   uint32(len(hash)),\n",
+			"line": "184",
+			"column": "22",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "190",
+				"url": "https://cwe.mitre.org/data/definitions/190.html"
+			},
+			"rule_id": "G115",
+			"details": "integer overflow conversion int -\u003e uint32",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/config/config.go",
+			"code": "153: \t\t\tArgon2SaltLength:  uint32(getEnvAsInt(\"ARGON2_SALT_LENGTH\", 16)),\n154: \t\t\tArgon2KeyLength:   uint32(getEnvAsInt(\"ARGON2_KEY_LENGTH\", 32)),\n155: \t\t},\n",
+			"line": "154",
+			"column": "29",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "190",
+				"url": "https://cwe.mitre.org/data/definitions/190.html"
+			},
+			"rule_id": "G115",
+			"details": "integer overflow conversion int -\u003e uint32",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/config/config.go",
+			"code": "152: \t\t\tArgon2Parallelism: uint8(getEnvAsInt(\"ARGON2_PARALLELISM\", 2)),\n153: \t\t\tArgon2SaltLength:  uint32(getEnvAsInt(\"ARGON2_SALT_LENGTH\", 16)),\n154: \t\t\tArgon2KeyLength:   uint32(getEnvAsInt(\"ARGON2_KEY_LENGTH\", 32)),\n",
+			"line": "153",
+			"column": "29",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "190",
+				"url": "https://cwe.mitre.org/data/definitions/190.html"
+			},
+			"rule_id": "G115",
+			"details": "integer overflow conversion int -\u003e uint32",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/config/config.go",
+			"code": "150: \t\t\tArgon2Memory:      uint32(getEnvAsInt(\"ARGON2_MEMORY\", 65536)),\n151: \t\t\tArgon2Iterations:  uint32(getEnvAsInt(\"ARGON2_ITERATIONS\", 3)),\n152: \t\t\tArgon2Parallelism: uint8(getEnvAsInt(\"ARGON2_PARALLELISM\", 2)),\n",
+			"line": "151",
+			"column": "29",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "190",
+				"url": "https://cwe.mitre.org/data/definitions/190.html"
+			},
+			"rule_id": "G115",
+			"details": "integer overflow conversion int -\u003e uint32",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/config/config.go",
+			"code": "149: \t\t\tBCryptCost:        getEnvAsInt(\"BCRYPT_COST\", 12),\n150: \t\t\tArgon2Memory:      uint32(getEnvAsInt(\"ARGON2_MEMORY\", 65536)),\n151: \t\t\tArgon2Iterations:  uint32(getEnvAsInt(\"ARGON2_ITERATIONS\", 3)),\n",
+			"line": "150",
+			"column": "29",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "190",
+				"url": "https://cwe.mitre.org/data/definitions/190.html"
+			},
+			"rule_id": "G115",
+			"details": "integer overflow conversion int -\u003e uint",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/worker/gemini.go",
+			"code": "697: \tbaseDelay := time.Second\n698: \tdelay := time.Duration(1\u003c\u003cuint(attempt)) * baseDelay\n699: \n",
+			"line": "698",
+			"column": "32",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "190",
+				"url": "https://cwe.mitre.org/data/definitions/190.html"
+			},
+			"rule_id": "G115",
+			"details": "integer overflow conversion int -\u003e uint",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/common/errors.go",
+			"code": "81: \tbaseDelay := time.Second\n82: \tdelay := time.Duration(1\u003c\u003cuint(e.CurrentRetry)) * baseDelay\n83: \n",
+			"line": "82",
+			"column": "32",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "190",
+				"url": "https://cwe.mitre.org/data/definitions/190.html"
+			},
+			"rule_id": "G115",
+			"details": "integer overflow conversion int -\u003e int32",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/conversion/store.go",
+			"code": "145: \tif req.ProcessingTimeMs != nil {\n146: \t\tprocessingTimeMs = sql.NullInt32{Int32: int32(*req.ProcessingTimeMs), Valid: true}\n147: \t}\n",
+			"line": "146",
+			"column": "48",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "338",
+				"url": "https://cwe.mitre.org/data/definitions/338.html"
+			},
+			"rule_id": "G404",
+			"details": "Use of weak random number generator (math/rand or math/rand/v2 instead of crypto/rand)",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/worker/retry.go",
+			"code": "269: \tif r.config.Jitter {\n270: \t\tjitterFactor := 0.5 + rand.Float64()\n271: \t\tdelay = time.Duration(float64(delay) * jitterFactor)\n",
+			"line": "270",
+			"column": "25",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "338",
+				"url": "https://cwe.mitre.org/data/definitions/338.html"
+			},
+			"rule_id": "G404",
+			"details": "Use of weak random number generator (math/rand or math/rand/v2 instead of crypto/rand)",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/worker/retry.go",
+			"code": "257: \tif r.config.Jitter {\n258: \t\tjitterFactor := 0.5 + rand.Float64()\n259: \t\tdelay = time.Duration(float64(delay) * jitterFactor)\n",
+			"line": "258",
+			"column": "25",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "338",
+				"url": "https://cwe.mitre.org/data/definitions/338.html"
+			},
+			"rule_id": "G404",
+			"details": "Use of weak random number generator (math/rand or math/rand/v2 instead of crypto/rand)",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/worker/retry.go",
+			"code": "241: \tif r.config.Jitter {\n242: \t\tjitterFactor := 0.5 + rand.Float64()\n243: \t\tdelay = delay * jitterFactor\n",
+			"line": "242",
+			"column": "25",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "338",
+				"url": "https://cwe.mitre.org/data/definitions/338.html"
+			},
+			"rule_id": "G404",
+			"details": "Use of weak random number generator (math/rand or math/rand/v2 instead of crypto/rand)",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/worker/retry.go",
+			"code": "45: \t\t// Add random jitter between 0.5 and 1.5 of the calculated delay\n46: \t\tjitterFactor := 0.5 + rand.Float64() // 0.5 to 1.5\n47: \t\tdelay = delay * jitterFactor\n",
+			"line": "46",
+			"column": "25",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "338",
+				"url": "https://cwe.mitre.org/data/definitions/338.html"
+			},
+			"rule_id": "G404",
+			"details": "Use of weak random number generator (math/rand or math/rand/v2 instead of crypto/rand)",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/worker/gemini.go",
+			"code": "801: \t\t\tnoiseG := int(float64(g8) * noiseLevel * (rand.Float64()*2 - 1))\n802: \t\t\tnoiseB := int(float64(b8) * noiseLevel * (rand.Float64()*2 - 1))\n803: \n",
+			"line": "802",
+			"column": "46",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "338",
+				"url": "https://cwe.mitre.org/data/definitions/338.html"
+			},
+			"rule_id": "G404",
+			"details": "Use of weak random number generator (math/rand or math/rand/v2 instead of crypto/rand)",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/worker/gemini.go",
+			"code": "800: \t\t\tnoiseR := int(float64(r8) * noiseLevel * (rand.Float64()*2 - 1))\n801: \t\t\tnoiseG := int(float64(g8) * noiseLevel * (rand.Float64()*2 - 1))\n802: \t\t\tnoiseB := int(float64(b8) * noiseLevel * (rand.Float64()*2 - 1))\n",
+			"line": "801",
+			"column": "46",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "338",
+				"url": "https://cwe.mitre.org/data/definitions/338.html"
+			},
+			"rule_id": "G404",
+			"details": "Use of weak random number generator (math/rand or math/rand/v2 instead of crypto/rand)",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/worker/gemini.go",
+			"code": "799: \t\t\t// Add noise: ±noiseLevel% of value\n800: \t\t\tnoiseR := int(float64(r8) * noiseLevel * (rand.Float64()*2 - 1))\n801: \t\t\tnoiseG := int(float64(g8) * noiseLevel * (rand.Float64()*2 - 1))\n",
+			"line": "800",
+			"column": "46",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "338",
+				"url": "https://cwe.mitre.org/data/definitions/338.html"
+			},
+			"rule_id": "G404",
+			"details": "Use of weak random number generator (math/rand or math/rand/v2 instead of crypto/rand)",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/worker/gemini.go",
+			"code": "754: \t\tresizeDelta := rand.Intn(3) + 1 // 1 to 3 pixels\n755: \t\tif rand.Intn(2) == 0 {\n756: \t\t\tnewWidth = width + resizeDelta\n",
+			"line": "755",
+			"column": "6",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "338",
+				"url": "https://cwe.mitre.org/data/definitions/338.html"
+			},
+			"rule_id": "G404",
+			"details": "Use of weak random number generator (math/rand or math/rand/v2 instead of crypto/rand)",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/worker/gemini.go",
+			"code": "753: \t\t// Apply a small random resize (1-3 pixels) to alter image signature\n754: \t\tresizeDelta := rand.Intn(3) + 1 // 1 to 3 pixels\n755: \t\tif rand.Intn(2) == 0 {\n",
+			"line": "754",
+			"column": "18",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "338",
+				"url": "https://cwe.mitre.org/data/definitions/338.html"
+			},
+			"rule_id": "G404",
+			"details": "Use of weak random number generator (math/rand or math/rand/v2 instead of crypto/rand)",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/crosscutting/retry_service.go",
+			"code": "251: \tif rs.config.Jitter {\n252: \t\tjitter := time.Duration(rand.Float64() * float64(delay) * 0.1) // 10% jitter\n253: \t\tdelay += jitter\n",
+			"line": "252",
+			"column": "27",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "338",
+				"url": "https://cwe.mitre.org/data/definitions/338.html"
+			},
+			"rule_id": "G404",
+			"details": "Use of weak random number generator (math/rand or math/rand/v2 instead of crypto/rand)",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/common/retry.go",
+			"code": "175: \tif r.config.Jitter {\n176: \t\tjitter := time.Duration(rand.Float64() * float64(delay) * 0.1) // 10% jitter\n177: \t\tdelay += jitter\n",
+			"line": "176",
+			"column": "27",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "LOW",
+			"cwe": {
+				"id": "295",
+				"url": "https://cwe.mitre.org/data/definitions/295.html"
+			},
+			"rule_id": "G402",
+			"details": "TLS PreferServerCipherSuites may be false.",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/security/tls.go",
+			"code": "86: \t\tCipherSuites:             tc.CipherSuites,\n87: \t\tPreferServerCipherSuites: tc.PreferServerCipherSuites,\n88: \t\tInsecureSkipVerify:       tc.InsecureSkipVerify,\n",
+			"line": "87",
+			"column": "29",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/user/store_postgres.go",
+			"code": "283: \n284: \tquery := fmt.Sprintf(`\n285: \t\tUPDATE user_conversions \n286: \t\tSET %s\n287: \t\tWHERE id = $%d\n288: \t\tRETURNING id, user_id, conversion_type, input_file_url, output_file_url,\n289: \t\t          style_name, status, error_message, processing_time_ms, file_size_bytes,\n290: \t\t          created_at, completed_at`,\n291: \t\tfmt.Sprintf(\"%s\", setParts[0]), argIndex)\n292: \n",
+			"line": "284-291",
+			"column": "11",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/user/store_postgres.go",
+			"code": "97: \targs = append(args, userID)\n98: \tquery := fmt.Sprintf(`\n99: \t\tUPDATE users \n100: \t\tSET %s, updated_at = NOW()\n101: \t\tWHERE id = $%d\n102: \t\tRETURNING id, phone, name, avatar_url, bio, role, is_phone_verified, is_active,\n103: \t\t          last_login_at, free_conversions_used, free_conversions_limit, created_at, updated_at`,\n104: \t\tfmt.Sprintf(\"%s\", strings.Join(setParts, \", \")), argIndex)\n105: \n",
+			"line": "98-104",
+			"column": "11",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/user/store.go",
+			"code": "209: \t// Get conversions\n210: \tquery := fmt.Sprintf(`\n211: \t\tSELECT id, user_id, conversion_type, input_file_url, output_file_url, style_name,\n212: \t\t       status, error_message, processing_time_ms, file_size_bytes, created_at, completed_at\n213: \t\tFROM user_conversions \n214: \t\t%s\n215: \t\tORDER BY created_at DESC\n216: \t\tLIMIT $%d OFFSET $%d`, whereClause, argIndex, argIndex+1)\n217: \n",
+			"line": "210-216",
+			"column": "11",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/user/store.go",
+			"code": "197: \t// Count total records\n198: \tcountQuery := fmt.Sprintf(\"SELECT COUNT(*) FROM user_conversions %s\", whereClause)\n199: \tvar total int\n",
+			"line": "198",
+			"column": "16",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/share/store_postgres.go",
+			"code": "107: \n108: \tquery := fmt.Sprintf(`\n109: \t\tUPDATE shared_links \n110: \t\tSET %s, updated_at = NOW()\n111: \t\tWHERE id = $%d`,\n112: \t\tstrings.Join(setParts, \", \"), argIndex)\n113: \n",
+			"line": "108-112",
+			"column": "11",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/share/store.go",
+			"code": "145: \n146: \tquery := fmt.Sprintf(`\n147: \t\tUPDATE shared_links \n148: \t\tSET %s\n149: \t\tWHERE id = $%d\n150: \t`, strings.Join(setParts, \", \"), argIndex)\n151: \n",
+			"line": "146-150",
+			"column": "11",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/payment/store_postgres.go",
+			"code": "325: \n326: \tquery := fmt.Sprintf(`\n327: \t\tUPDATE payment_plans \n328: \t\tSET %s, updated_at = NOW()\n329: \t\tWHERE id = $%d\n330: \t\tRETURNING id, name, display_name, description, price_per_month_cents,\n331: \t\t          monthly_conversions_limit, monthly_images_limit, features, is_active,\n332: \t\t          created_at, updated_at`,\n333: \t\tsetClause, argIndex)\n334: \n",
+			"line": "326-333",
+			"column": "11",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/payment/store_postgres.go",
+			"code": "135: \n136: \tquery := fmt.Sprintf(`\n137: \t\tUPDATE payments \n138: \t\tSET %s, updated_at = NOW()\n139: \t\tWHERE id = $%d\n140: \t\tRETURNING id, user_id, vendor_id, plan_id, amount, currency, status,\n141: \t\t          payment_method, gateway, gateway_track_id, gateway_ref_number,\n142: \t\t          gateway_card_number, description, callback_url, return_url,\n143: \t\t          created_at, updated_at, paid_at, expires_at`,\n144: \t\tsetClause, argIndex)\n145: \n",
+			"line": "136-144",
+			"column": "11",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/payment/store.go",
+			"code": "369: \n370: \tquery := fmt.Sprintf(`\n371: \t\tUPDATE payment_plans \n372: \t\tSET %s\n373: \t\tWHERE id = $%d\n374: \t\tRETURNING id, name, display_name, description, price_per_month_cents, \n375: \t\t\tmonthly_conversions_limit, features, is_active, created_at, updated_at`,\n376: \t\tsetClause, argIndex)\n377: \n",
+			"line": "370-376",
+			"column": "11",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/payment/store.go",
+			"code": "201: \t// Get payments with plan information\n202: \tquery := fmt.Sprintf(`\n203: \t\tSELECT p.id, p.user_id, p.vendor_id, p.plan_id, p.amount, p.currency, p.status, \n204: \t\t\tp.payment_method, p.gateway, p.gateway_track_id, p.gateway_ref_number, \n205: \t\t\tp.description, p.created_at, p.paid_at,\n206: \t\t\tpp.name as plan_name, pp.display_name as plan_display_name\n207: \t\tFROM payments p\n208: \t\tLEFT JOIN payment_plans pp ON p.plan_id = pp.id\n209: \t\t%s\n210: \t\tORDER BY p.created_at DESC\n211: \t\tLIMIT $%d OFFSET $%d`, whereClause, argIndex, argIndex+1)\n212: \n",
+			"line": "202-211",
+			"column": "11",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/payment/store.go",
+			"code": "193: \t// Count total records\n194: \tcountQuery := fmt.Sprintf(\"SELECT COUNT(*) FROM payments %s\", whereClause)\n195: \tvar total int\n",
+			"line": "194",
+			"column": "16",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/payment/store.go",
+			"code": "141: \n142: \tquery := fmt.Sprintf(`\n143: \t\tUPDATE payments \n144: \t\tSET %s\n145: \t\tWHERE id = $%d\n146: \t\tRETURNING id, user_id, plan_id, amount, currency, status, payment_method, \n147: \t\t\tgateway, gateway_track_id, gateway_ref_number, gateway_card_number, \n148: \t\t\tdescription, callback_url, return_url, created_at, updated_at, paid_at, expires_at`,\n149: \t\tsetClause, argIndex)\n150: \n",
+			"line": "142-149",
+			"column": "11",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/notification/store.go",
+			"code": "680: \n681: \tquery := fmt.Sprintf(\"UPDATE notification_templates SET %s WHERE id = $%d\",\n682: \t\tfmt.Sprintf(\"%s\", setParts[0]), argIndex)\n683: \n",
+			"line": "681-682",
+			"column": "11",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/notification/store.go",
+			"code": "367: \n368: \tquery := fmt.Sprintf(\"UPDATE notification_deliveries SET %s WHERE id = $%d\",\n369: \t\tfmt.Sprintf(\"%s\", setParts[0]), argIndex)\n370: \n",
+			"line": "368-369",
+			"column": "11",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/notification/store.go",
+			"code": "291: \n292: \tquery := fmt.Sprintf(\"UPDATE notifications SET %s WHERE id = $%d\",\n293: \t\tfmt.Sprintf(\"%s\", setParts[0]), argIndex)\n294: \n",
+			"line": "292-293",
+			"column": "11",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/image/usage_tracker.go",
+			"code": "90: \t// Get usage history\n91: \tquery := fmt.Sprintf(`\n92: \t\tSELECT id, image_id, user_id, action, ip_address, user_agent, metadata, created_at\n93: \t\tFROM image_usage_history\n94: \t\t%s\n95: \t\tORDER BY created_at DESC\n96: \t\tLIMIT $%d OFFSET $%d`,\n97: \t\twhereClause,\n98: \t\targIndex,\n99: \t\targIndex+1,\n100: \t)\n101: \n",
+			"line": "91-100",
+			"column": "11",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/image/usage_tracker.go",
+			"code": "75: \t// Count total records\n76: \tcountQuery := fmt.Sprintf(\"SELECT COUNT(*) FROM image_usage_history %s\", whereClause)\n77: \tvar total int\n",
+			"line": "76",
+			"column": "16",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/image/store_postgres.go",
+			"code": "155: \n156: \tquery := fmt.Sprintf(`\n157: \t\tUPDATE images \n158: \t\tSET %s, updated_at = NOW()\n159: \t\tWHERE id = $%d\n160: \t\tRETURNING id, user_id, vendor_id, type, file_name, original_url, thumbnail_url,\n161: \t\t          file_size, mime_type, width, height, is_public, tags, metadata,\n162: \t\t          created_at, updated_at`,\n163: \t\tsetClause, imageIDArgIndex)\n164: \n",
+			"line": "156-163",
+			"column": "11",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/image/store.go",
+			"code": "303: \t// Get images\n304: \tquery := fmt.Sprintf(`\n305: \t\tSELECT id, user_id, vendor_id, type, file_name, original_url, thumbnail_url,\n306: \t\t\t   file_size, mime_type, width, height, is_public, tags, metadata,\n307: \t\t\t   created_at, updated_at\n308: \t\tFROM images\n309: \t\t%s\n310: \t\tORDER BY created_at DESC\n311: \t\tLIMIT $%d OFFSET $%d`,\n312: \t\twhereClause,\n313: \t\targIndex,\n314: \t\targIndex+1,\n315: \t)\n316: \n",
+			"line": "304-315",
+			"column": "11",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/image/store.go",
+			"code": "288: \t// Count total records\n289: \tcountQuery := fmt.Sprintf(\"SELECT COUNT(*) FROM images %s\", whereClause)\n290: \tvar total int\n",
+			"line": "289",
+			"column": "16",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/image/store.go",
+			"code": "176: \n177: \tquery := fmt.Sprintf(`\n178: \t\tUPDATE images \n179: \t\tSET %s\n180: \t\tWHERE id = $%d\n181: \t\tRETURNING id, user_id, vendor_id, type, file_name, original_url, thumbnail_url,\n182: \t\t\t\t  file_size, mime_type, width, height, is_public, tags, metadata,\n183: \t\t\t\t  created_at, updated_at`,\n184: \t\tstrings.Join(setParts, \", \"),\n185: \t\targIndex,\n186: \t)\n187: \n",
+			"line": "177-186",
+			"column": "11",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/conversion/store_postgres.go",
+			"code": "299: \n300: \tquery := fmt.Sprintf(`\n301: \t\tSELECT \n302: \t\t\tCOUNT(*) as total_conversions,\n303: \t\t\tCOUNT(*) FILTER (WHERE status = 'completed') as completed_conversions,\n304: \t\t\tCOUNT(*) FILTER (WHERE status = 'failed') as failed_conversions,\n305: \t\t\tCOUNT(*) FILTER (WHERE status = 'pending') as pending_conversions,\n306: \t\t\tCOUNT(*) FILTER (WHERE status = 'processing') as processing_conversions,\n307: \t\t\tAVG(processing_time_ms) FILTER (WHERE status = 'completed') as avg_processing_time_ms\n308: \t\tFROM conversions \n309: \t\tWHERE user_id = $1 AND %s`, timeFilter)\n310: \n",
+			"line": "300-309",
+			"column": "11",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/conversion/store_postgres.go",
+			"code": "136: \n137: \tquery := fmt.Sprintf(`\n138: \t\tUPDATE conversions \n139: \t\tSET %s, updated_at = NOW()\n140: \t\tWHERE id = $%d`,\n141: \t\tfmt.Sprintf(\"%s\", setParts[0]), argIndex)\n142: \n",
+			"line": "137-141",
+			"column": "11",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/conversion/store.go",
+			"code": "196: \t// Get conversions\n197: \tquery := fmt.Sprintf(`\n198: \t\tSELECT id, user_id, user_image_id, cloth_image_id, status, result_image_id, \n199: \t\t       error_message, processing_time_ms, created_at, updated_at, completed_at\n200: \t\tFROM conversions \n201: \t\t%s\n202: \t\tORDER BY created_at DESC\n203: \t\tLIMIT $%d OFFSET $%d\n204: \t`, whereClause, argIndex, argIndex+1)\n205: \n",
+			"line": "197-204",
+			"column": "11",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/conversion/store.go",
+			"code": "188: \t// Count total\n189: \tcountQuery := fmt.Sprintf(\"SELECT COUNT(*) FROM conversions %s\", whereClause)\n190: \tvar total int\n",
+			"line": "189",
+			"column": "16",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/admin/store.go",
+			"code": "714: \n715: \tquery := fmt.Sprintf(`\n716: \t\tUPDATE payment_plans \n717: \t\tSET %s\n718: \t\tWHERE id = $%d\n719: \t`, strings.Join(setParts, \", \"), argIndex)\n720: \n",
+			"line": "715-719",
+			"column": "11",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/admin/store.go",
+			"code": "471: \n472: \tquery := fmt.Sprintf(`\n473: \t\tUPDATE vendors \n474: \t\tSET %s\n475: \t\tWHERE id = $%d\n476: \t`, strings.Join(setParts, \", \"), argIndex)\n477: \n",
+			"line": "472-476",
+			"column": "11",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "89",
+				"url": "https://cwe.mitre.org/data/definitions/89.html"
+			},
+			"rule_id": "G201",
+			"details": "SQL string formatting",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/admin/store.go",
+			"code": "213: \n214: \tquery := fmt.Sprintf(`\n215: \t\tUPDATE users \n216: \t\tSET %s\n217: \t\tWHERE id = $%d\n218: \t`, strings.Join(setParts, \", \"), argIndex)\n219: \n",
+			"line": "214-218",
+			"column": "11",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "22",
+				"url": "https://cwe.mitre.org/data/definitions/22.html"
+			},
+			"rule_id": "G304",
+			"details": "Potential file inclusion via variable",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/storage/storage.go",
+			"code": "473: \t// Read source file\n474: \tdata, err := os.ReadFile(srcPath)\n475: \tif err != nil {\n",
+			"line": "474",
+			"column": "15",
+			"nosec": false,
+			"suppressions": null,
+			"autofix": "Consider using os.Root to scope file access under a fixed root (Go \u003e=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal."
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "22",
+				"url": "https://cwe.mitre.org/data/definitions/22.html"
+			},
+			"rule_id": "G304",
+			"details": "Potential file inclusion via variable",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/storage/storage.go",
+			"code": "413: \t// Read backup data\n414: \tdata, err := os.ReadFile(backupPath)\n415: \tif err != nil {\n",
+			"line": "414",
+			"column": "15",
+			"nosec": false,
+			"suppressions": null,
+			"autofix": "Consider using os.Root to scope file access under a fixed root (Go \u003e=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal."
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "22",
+				"url": "https://cwe.mitre.org/data/definitions/22.html"
+			},
+			"rule_id": "G304",
+			"details": "Potential file inclusion via variable",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/storage/storage.go",
+			"code": "256: func (s *StorageService) calculateChecksum(filePath string) (string, error) {\n257: \tdata, err := os.ReadFile(filePath)\n258: \tif err != nil {\n",
+			"line": "257",
+			"column": "15",
+			"nosec": false,
+			"suppressions": null,
+			"autofix": "Consider using os.Root to scope file access under a fixed root (Go \u003e=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal."
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "22",
+				"url": "https://cwe.mitre.org/data/definitions/22.html"
+			},
+			"rule_id": "G304",
+			"details": "Potential file inclusion via variable",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/storage/storage.go",
+			"code": "225: \t// Read original file\n226: \tdata, err := os.ReadFile(filePath)\n227: \tif err != nil {\n",
+			"line": "226",
+			"column": "15",
+			"nosec": false,
+			"suppressions": null,
+			"autofix": "Consider using os.Root to scope file access under a fixed root (Go \u003e=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal."
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "22",
+				"url": "https://cwe.mitre.org/data/definitions/22.html"
+			},
+			"rule_id": "G304",
+			"details": "Potential file inclusion via variable",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/storage/storage.go",
+			"code": "149: func (s *StorageService) GetFile(ctx context.Context, filePath string) ([]byte, error) {\n150: \tdata, err := os.ReadFile(filePath)\n151: \tif err != nil {\n",
+			"line": "150",
+			"column": "15",
+			"nosec": false,
+			"suppressions": null,
+			"autofix": "Consider using os.Root to scope file access under a fixed root (Go \u003e=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal."
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "22",
+				"url": "https://cwe.mitre.org/data/definitions/22.html"
+			},
+			"rule_id": "G304",
+			"details": "Potential file inclusion via variable",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/storage/local_storage.go",
+			"code": "317: func (s *LocalStorage) calculateChecksum(filePath string) (string, error) {\n318: \tdata, err := os.ReadFile(filePath)\n319: \tif err != nil {\n",
+			"line": "318",
+			"column": "15",
+			"nosec": false,
+			"suppressions": null,
+			"autofix": "Consider using os.Root to scope file access under a fixed root (Go \u003e=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal."
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "22",
+				"url": "https://cwe.mitre.org/data/definitions/22.html"
+			},
+			"rule_id": "G304",
+			"details": "Potential file inclusion via variable",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/storage/local_storage.go",
+			"code": "188: \n189: \tdst, err := os.Create(thumbnailPath)\n190: \tif err != nil {\n",
+			"line": "189",
+			"column": "14",
+			"nosec": false,
+			"suppressions": null,
+			"autofix": "Consider using os.Root to scope file access under a fixed root (Go \u003e=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal."
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "22",
+				"url": "https://cwe.mitre.org/data/definitions/22.html"
+			},
+			"rule_id": "G304",
+			"details": "Potential file inclusion via variable",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/storage/local_storage.go",
+			"code": "182: \t// Copy original to thumbnail location\n183: \tsrc, err := os.Open(originalPath)\n184: \tif err != nil {\n",
+			"line": "183",
+			"column": "14",
+			"nosec": false,
+			"suppressions": null,
+			"autofix": "Consider using os.Root to scope file access under a fixed root (Go \u003e=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal."
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "22",
+				"url": "https://cwe.mitre.org/data/definitions/22.html"
+			},
+			"rule_id": "G304",
+			"details": "Potential file inclusion via variable",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/storage/local_storage.go",
+			"code": "82: func (s *LocalStorage) GetFile(ctx context.Context, filePath string) (*os.File, error) {\n83: \tfile, err := os.Open(filePath)\n84: \tif err != nil {\n",
+			"line": "83",
+			"column": "15",
+			"nosec": false,
+			"suppressions": null,
+			"autofix": "Consider using os.Root to scope file access under a fixed root (Go \u003e=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal."
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "22",
+				"url": "https://cwe.mitre.org/data/definitions/22.html"
+			},
+			"rule_id": "G304",
+			"details": "Potential file inclusion via variable",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/storage/local_storage.go",
+			"code": "65: \t// Create destination file\n66: \tdst, err := os.Create(filePath)\n67: \tif err != nil {\n",
+			"line": "66",
+			"column": "14",
+			"nosec": false,
+			"suppressions": null,
+			"autofix": "Consider using os.Root to scope file access under a fixed root (Go \u003e=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal."
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "22",
+				"url": "https://cwe.mitre.org/data/definitions/22.html"
+			},
+			"rule_id": "G304",
+			"details": "Potential file inclusion via variable",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/migration/migrate.go",
+			"code": "49: \t\t// Read migration file\n50: \t\tcontent, err := os.ReadFile(file)\n51: \t\tif err != nil {\n",
+			"line": "50",
+			"column": "19",
+			"nosec": false,
+			"suppressions": null,
+			"autofix": "Consider using os.Root to scope file access under a fixed root (Go \u003e=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal."
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "22",
+				"url": "https://cwe.mitre.org/data/definitions/22.html"
+			},
+			"rule_id": "G304",
+			"details": "Potential file inclusion via variable",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/common/mocks.go",
+			"code": "706: func (m *MockImageFileStorage) GetFile(ctx context.Context, filePath string) (*os.File, error) {\n707: \treturn os.Open(filePath)\n708: }\n",
+			"line": "707",
+			"column": "9",
+			"nosec": false,
+			"suppressions": null,
+			"autofix": "Consider using os.Root to scope file access under a fixed root (Go \u003e=1.24). Prefer root.Open/root.Stat over os.Open/os.Stat to prevent directory traversal."
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "LOW",
+			"cwe": {
+				"id": "400",
+				"url": "https://cwe.mitre.org/data/definitions/400.html"
+			},
+			"rule_id": "G112",
+			"details": "Potential Slowloris Attack because ReadHeaderTimeout is not configured in the http.Server",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/main.go",
+			"code": "218: \t// Start server in a goroutine\n219: \tserver := \u0026http.Server{\n220: \t\tAddr:    cfg.Server.HTTPAddr,\n221: \t\tHandler: r,\n222: \t}\n223: \n",
+			"line": "219-222",
+			"column": "13",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "276",
+				"url": "https://cwe.mitre.org/data/definitions/276.html"
+			},
+			"rule_id": "G302",
+			"details": "Expect file permissions to be 0600 or less",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/logging/logger.go",
+			"code": "90: \t} else if config.Output != \"stdout\" \u0026\u0026 config.Output != \"\" {\n91: \t\tfile, err := os.OpenFile(config.Output, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)\n92: \t\tif err != nil {\n",
+			"line": "91",
+			"column": "16",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "276",
+				"url": "https://cwe.mitre.org/data/definitions/276.html"
+			},
+			"rule_id": "G302",
+			"details": "Expect file permissions to be 0600 or less",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/crosscutting/structured_logger.go",
+			"code": "105: \tif config.OutputFile != \"\" {\n106: \t\tfile, err := os.OpenFile(config.OutputFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)\n107: \t\tif err != nil {\n",
+			"line": "106",
+			"column": "16",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "276",
+				"url": "https://cwe.mitre.org/data/definitions/276.html"
+			},
+			"rule_id": "G301",
+			"details": "Expect directory permissions to be 0750 or less",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/storage/storage.go",
+			"code": "494: \t// Ensure destination directory exists\n495: \tif err := os.MkdirAll(filepath.Dir(dstPath), 0755); err != nil {\n496: \t\treturn fmt.Errorf(\"failed to create destination directory: %w\", err)\n",
+			"line": "495",
+			"column": "12",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "276",
+				"url": "https://cwe.mitre.org/data/definitions/276.html"
+			},
+			"rule_id": "G301",
+			"details": "Expect directory permissions to be 0750 or less",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/storage/storage.go",
+			"code": "479: \t// Ensure destination directory exists\n480: \tif err := os.MkdirAll(filepath.Dir(dstPath), 0755); err != nil {\n481: \t\treturn fmt.Errorf(\"failed to create destination directory: %w\", err)\n",
+			"line": "480",
+			"column": "12",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "276",
+				"url": "https://cwe.mitre.org/data/definitions/276.html"
+			},
+			"rule_id": "G301",
+			"details": "Expect directory permissions to be 0750 or less",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/storage/storage.go",
+			"code": "419: \t// Ensure target directory exists\n420: \tif err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {\n421: \t\treturn fmt.Errorf(\"failed to create target directory: %w\", err)\n",
+			"line": "420",
+			"column": "12",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "276",
+				"url": "https://cwe.mitre.org/data/definitions/276.html"
+			},
+			"rule_id": "G301",
+			"details": "Expect directory permissions to be 0750 or less",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/storage/storage.go",
+			"code": "234: \tbackupDir := filepath.Join(s.backupPath, timestamp)\n235: \tif err := os.MkdirAll(backupDir, 0755); err != nil {\n236: \t\treturn\n",
+			"line": "235",
+			"column": "12",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "276",
+				"url": "https://cwe.mitre.org/data/definitions/276.html"
+			},
+			"rule_id": "G301",
+			"details": "Expect directory permissions to be 0750 or less",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/storage/storage.go",
+			"code": "117: \t// Ensure directory exists\n118: \tif err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {\n119: \t\treturn \"\", fmt.Errorf(\"failed to create directory: %w\", err)\n",
+			"line": "118",
+			"column": "12",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "276",
+				"url": "https://cwe.mitre.org/data/definitions/276.html"
+			},
+			"rule_id": "G301",
+			"details": "Expect directory permissions to be 0750 or less",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/storage/storage.go",
+			"code": "98: \tfor _, folder := range folders {\n99: \t\tif err := os.MkdirAll(folder, 0755); err != nil {\n100: \t\t\treturn fmt.Errorf(\"failed to create folder %s: %w\", folder, err)\n",
+			"line": "99",
+			"column": "13",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "276",
+				"url": "https://cwe.mitre.org/data/definitions/276.html"
+			},
+			"rule_id": "G301",
+			"details": "Expect directory permissions to be 0750 or less",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/storage/storage.go",
+			"code": "65: \t// Ensure backup path exists\n66: \tif err := os.MkdirAll(config.BackupPath, 0755); err != nil {\n67: \t\treturn nil, fmt.Errorf(\"failed to create backup path: %w\", err)\n",
+			"line": "66",
+			"column": "12",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "276",
+				"url": "https://cwe.mitre.org/data/definitions/276.html"
+			},
+			"rule_id": "G301",
+			"details": "Expect directory permissions to be 0750 or less",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/storage/storage.go",
+			"code": "60: \t// Ensure base path exists\n61: \tif err := os.MkdirAll(config.BasePath, 0755); err != nil {\n62: \t\treturn nil, fmt.Errorf(\"failed to create base path: %w\", err)\n",
+			"line": "61",
+			"column": "12",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "276",
+				"url": "https://cwe.mitre.org/data/definitions/276.html"
+			},
+			"rule_id": "G301",
+			"details": "Expect directory permissions to be 0750 or less",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/storage/local_storage.go",
+			"code": "49: \tfullPath := filepath.Join(s.basePath, subPath)\n50: \tif err := os.MkdirAll(fullPath, 0755); err != nil {\n51: \t\treturn \"\", fmt.Errorf(\"failed to create directory: %w\", err)\n",
+			"line": "50",
+			"column": "12",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "276",
+				"url": "https://cwe.mitre.org/data/definitions/276.html"
+			},
+			"rule_id": "G301",
+			"details": "Expect directory permissions to be 0750 or less",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/storage/config.go",
+			"code": "95: \tfor _, dir := range dirs {\n96: \t\tif err := os.MkdirAll(dir, 0755); err != nil {\n97: \t\t\treturn fmt.Errorf(\"failed to create directory %s: %w\", dir, err)\n",
+			"line": "96",
+			"column": "13",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "276",
+				"url": "https://cwe.mitre.org/data/definitions/276.html"
+			},
+			"rule_id": "G306",
+			"details": "Expect WriteFile permissions to be 0600 or less",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/storage/storage.go",
+			"code": "484: \t// Write destination file\n485: \tif err := os.WriteFile(dstPath, data, 0644); err != nil {\n486: \t\treturn fmt.Errorf(\"failed to write destination file: %w\", err)\n",
+			"line": "485",
+			"column": "12",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "276",
+				"url": "https://cwe.mitre.org/data/definitions/276.html"
+			},
+			"rule_id": "G306",
+			"details": "Expect WriteFile permissions to be 0600 or less",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/storage/storage.go",
+			"code": "424: \t// Write restored file\n425: \tif err := os.WriteFile(filePath, data, 0644); err != nil {\n426: \t\treturn fmt.Errorf(\"failed to restore file: %w\", err)\n",
+			"line": "425",
+			"column": "12",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "276",
+				"url": "https://cwe.mitre.org/data/definitions/276.html"
+			},
+			"rule_id": "G306",
+			"details": "Expect WriteFile permissions to be 0600 or less",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/storage/storage.go",
+			"code": "241: \t// Write backup\n242: \tif err := os.WriteFile(backupPath, data, 0644); err != nil {\n243: \t\t// Log error but don't fail\n",
+			"line": "242",
+			"column": "12",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "276",
+				"url": "https://cwe.mitre.org/data/definitions/276.html"
+			},
+			"rule_id": "G306",
+			"details": "Expect WriteFile permissions to be 0600 or less",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/storage/storage.go",
+			"code": "122: \t// Write file\n123: \tif err := os.WriteFile(fullPath, data, 0644); err != nil {\n124: \t\treturn \"\", fmt.Errorf(\"failed to write file: %w\", err)\n",
+			"line": "123",
+			"column": "12",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "118",
+				"url": "https://cwe.mitre.org/data/definitions/118.html"
+			},
+			"rule_id": "G602",
+			"details": "slice index out of range",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/security/security.go",
+			"code": "163: \tvar parallelism uint8\n164: \tif _, err := fmt.Sscanf(parts[3], \"m=%d,t=%d,p=%d\", \u0026memory, \u0026iterations, \u0026parallelism); err != nil {\n165: \t\treturn nil, nil, nil, fmt.Errorf(\"invalid parameters: %w\", err)\n",
+			"line": "164",
+			"column": "31",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "118",
+				"url": "https://cwe.mitre.org/data/definitions/118.html"
+			},
+			"rule_id": "G602",
+			"details": "slice index out of range",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/security/security.go",
+			"code": "147: \n148: \tif count != 6 || parts[0] != \"\" || parts[1] != \"argon2id\" {\n149: \t\treturn nil, nil, nil, fmt.Errorf(\"invalid hash format\")\n",
+			"line": "148",
+			"column": "24",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/worker/service.go",
+			"code": "507: \t\t\tif s.metricsCollector != nil {\n508: \t\t\t\ts.metricsCollector.RecordWorkerHealth(ctx, s.workerID, \"healthy\")\n509: \t\t\t}\n",
+			"line": "508",
+			"column": "5",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/worker/service.go",
+			"code": "250: \tif s.metricsCollector != nil {\n251: \t\ts.metricsCollector.RecordJobComplete(ctx, job.ID, int(processingTime.Milliseconds()), true)\n252: \t}\n",
+			"line": "251",
+			"column": "3",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/worker/service.go",
+			"code": "223: \t\tif s.metricsCollector != nil {\n224: \t\t\ts.metricsCollector.RecordJobError(ctx, job.ID, \"processing_error\")\n225: \t\t}\n",
+			"line": "224",
+			"column": "4",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/worker/service.go",
+			"code": "168: \tif s.metricsCollector != nil {\n169: \t\ts.metricsCollector.RecordJobStart(ctx, job.ID, job.Type)\n170: \t}\n",
+			"line": "169",
+			"column": "3",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/worker/queue.go",
+			"code": "199: \t\t// Job failed, retry or move to dead letter queue\n200: \t\tw.queue.RetryJob(ctx, job)\n201: \t}\n",
+			"line": "200",
+			"column": "3",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/worker/queue.go",
+			"code": "192: \t\t// Unknown job type, move to dead letter queue\n193: \t\tw.queue.MoveToDeadLetterQueue(ctx, job)\n194: \t\treturn\n",
+			"line": "193",
+			"column": "3",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/storage/config.go",
+			"code": "244: \t\t\t\t// Perform backup cleanup\n245: \t\t\t\tbs.storage.CleanupOldBackups(ctx, bs.backupPolicy.RetentionDays)\n246: \t\t\tcase \u003c-bs.done:\n",
+			"line": "245",
+			"column": "5",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/share/service.go",
+			"code": "183: \t// Log successful access\n184: \ts.store.LogSharedLinkAccess(ctx, sharedLink.ID, req, true, \"\")\n185: \n",
+			"line": "184",
+			"column": "2",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/share/service.go",
+			"code": "155: \tif err != nil {\n156: \t\ts.store.LogSharedLinkAccess(ctx, sharedLink.ID, req, false, \"Failed to get conversion details\")\n157: \t\treturn AccessShareResponse{\n",
+			"line": "156",
+			"column": "3",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/share/service.go",
+			"code": "145: \tif sharedLink.MaxAccessCount != nil \u0026\u0026 sharedLink.AccessCount \u003e= *sharedLink.MaxAccessCount {\n146: \t\ts.store.LogSharedLinkAccess(ctx, sharedLink.ID, req, false, \"Share link access limit exceeded\")\n147: \t\treturn AccessShareResponse{\n",
+			"line": "146",
+			"column": "3",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/share/service.go",
+			"code": "136: \tif time.Now().After(sharedLink.ExpiresAt) {\n137: \t\ts.store.LogSharedLinkAccess(ctx, sharedLink.ID, req, false, \"Share link has expired\")\n138: \t\treturn AccessShareResponse{\n",
+			"line": "137",
+			"column": "3",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/share/service.go",
+			"code": "127: \tif !sharedLink.IsActive {\n128: \t\ts.store.LogSharedLinkAccess(ctx, sharedLink.ID, req, false, \"Share link is inactive\")\n129: \t\treturn AccessShareResponse{\n",
+			"line": "128",
+			"column": "3",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/share/service.go",
+			"code": "118: \t\t// Log failed access attempt\n119: \t\ts.store.LogSharedLinkAccess(ctx, \"\", req, false, \"Share token not found\")\n120: \t\treturn AccessShareResponse{\n",
+			"line": "119",
+			"column": "3",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/payment/service.go",
+			"code": "181: \t\t// Update payment status to failed\n182: \t\ts.store.UpdatePayment(ctx, payment.ID, map[string]interface{}{\n183: \t\t\t\"status\": PaymentStatusFailed,\n184: \t\t})\n185: \t\treturn fmt.Errorf(\"payment verification failed: %s\", verifyResp.Message)\n",
+			"line": "182-184",
+			"column": "3",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/payment/service.go",
+			"code": "172: \t\t// Update payment status to failed\n173: \t\ts.store.UpdatePayment(ctx, payment.ID, map[string]interface{}{\n174: \t\t\t\"status\": PaymentStatusFailed,\n175: \t\t})\n176: \t\treturn fmt.Errorf(\"failed to verify payment: %w\", err)\n",
+			"line": "173-175",
+			"column": "3",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/payment/service.go",
+			"code": "115: \t\t// Update payment status to failed\n116: \t\ts.store.UpdatePayment(ctx, paymentID, map[string]interface{}{\n117: \t\t\t\"status\": PaymentStatusFailed,\n118: \t\t})\n119: \t\treturn CreatePaymentResponse{}, fmt.Errorf(\"failed to create gateway payment: %w\", err)\n",
+			"line": "116-118",
+			"column": "3",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/notification/websocket.go",
+			"code": "163: \t\tfor message := range w.hub {\n164: \t\t\tw.BroadcastToAll(context.Background(), message)\n165: \t\t}\n",
+			"line": "164",
+			"column": "4",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/notification/service.go",
+			"code": "845: \tbytes := make([]byte, 16)\n846: \trand.Read(bytes)\n847: \treturn hex.EncodeToString(bytes)\n",
+			"line": "846",
+			"column": "2",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/monitoring/service.go",
+			"code": "312: \tif m.telegram != nil \u0026\u0026 m.telegram.IsEnabled() {\n313: \t\tm.telegram.SendSystemHealthAlert(ctx, component, status, details)\n314: \t}\n",
+			"line": "313",
+			"column": "3",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/monitoring/service.go",
+			"code": "297: \tif m.telegram != nil \u0026\u0026 m.telegram.IsEnabled() {\n298: \t\tm.telegram.SendSecurityAlert(ctx, event, details, context)\n299: \t}\n",
+			"line": "298",
+			"column": "3",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/monitoring/service.go",
+			"code": "277: \tif m.telegram != nil \u0026\u0026 m.telegram.IsEnabled() {\n278: \t\tm.telegram.SendQuotaAlert(ctx, resource, usage, limit, userID)\n279: \t}\n",
+			"line": "278",
+			"column": "3",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/monitoring/service.go",
+			"code": "231: \tif err.ShouldAlert \u0026\u0026 m.telegram != nil \u0026\u0026 m.telegram.IsEnabled() {\n232: \t\tm.telegram.SendErrorAlert(ctx, err, err.Context)\n233: \t}\n",
+			"line": "232",
+			"column": "3",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/monitoring/service.go",
+			"code": "209: \tif err.ShouldAlert \u0026\u0026 m.telegram != nil \u0026\u0026 m.telegram.IsEnabled() {\n210: \t\tm.telegram.SendCriticalAlert(ctx, fmt.Sprintf(\"System Error: %s\", err.Type), err.Error(), err.Context)\n211: \t}\n",
+			"line": "210",
+			"column": "3",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/monitoring/service.go",
+			"code": "176: \tif m.telegram != nil \u0026\u0026 m.telegram.IsEnabled() {\n177: \t\tm.telegram.SendBusinessAlert(ctx, err.Type, err.Message, err.Context)\n178: \t}\n",
+			"line": "177",
+			"column": "3",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/monitoring/service.go",
+			"code": "156: \t// Handle through error handler for alerts\n157: \tm.errorHandler.HandleError(ctx, err, context)\n158: }\n",
+			"line": "157",
+			"column": "2",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/migration/migrate.go",
+			"code": "68: \t\tif err != nil {\n69: \t\t\ttx.Rollback()\n70: \t\t\treturn fmt.Errorf(\"failed to update migrations table for %s: %w\", filename, err)\n",
+			"line": "69",
+			"column": "4",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/middleware/monitoring.go",
+			"code": "93: \t\t// Monitor the request\n94: \t\tm.perfMon.MonitorRequest(c.Request.Context(), c.Request.Method, c.Request.URL.Path, func(ctx context.Context) error {\n95: \t\t\tc.Request = c.Request.WithContext(ctx)\n96: \t\t\tc.Next()\n97: \t\t\treturn nil\n98: \t\t})\n99: \n",
+			"line": "94-98",
+			"column": "3",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/docs/api_docs.go",
+			"code": "965: \tw.WriteHeader(http.StatusOK)\n966: \tw.Write([]byte(swaggerHTML))\n967: }\n",
+			"line": "966",
+			"column": "2",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/docs/api_docs.go",
+			"code": "913: \tw.WriteHeader(http.StatusOK)\n914: \tjson.NewEncoder(w).Encode(doc)\n915: }\n",
+			"line": "914",
+			"column": "2",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/dashboard/store.go",
+			"code": "559: \t\t\tvar date time.Time\n560: \t\t\trows.Scan(\u0026date, \u0026trend.Count)\n561: \t\t\ttrend.Date = date.Format(\"2006-01-02\")\n",
+			"line": "560",
+			"column": "4",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/dashboard/store.go",
+			"code": "525: \t\t\tvar usageCount int\n526: \t\t\trows.Scan(\u0026styleName, \u0026usageCount)\n527: \t\t\tstyles = append(styles, styleName)\n",
+			"line": "526",
+			"column": "4",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/dashboard/store.go",
+			"code": "327: \t\tif tagsJSON.Valid {\n328: \t\t\tjson.Unmarshal([]byte(tagsJSON.String), \u0026img.Tags)\n329: \t\t}\n",
+			"line": "328",
+			"column": "4",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/crosscutting/structured_logger.go",
+			"code": "275: \tif sl.file != nil \u0026\u0026 !sl.config.OutputStdout {\n276: \t\tsl.file.WriteString(output + \"\\n\")\n277: \t}\n",
+			"line": "276",
+			"column": "3",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/crosscutting/signed_url_generator.go",
+			"code": "235: \t\tif err == nil {\n236: \t\t\tjson.Unmarshal(metadataBytes, \u0026metadata)\n237: \t\t}\n",
+			"line": "236",
+			"column": "4",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/crosscutting/security_checker.go",
+			"code": "230: \t\t// Reset file position\n231: \t\tfile.Seek(0, 0)\n232: \n",
+			"line": "231",
+			"column": "3",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/crosscutting/examples.go",
+			"code": "163: \t// Start server\n164: \tr.Run(\":8080\")\n165: }\n",
+			"line": "164",
+			"column": "2",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/crosscutting/error_handler.go",
+			"code": "526: \n527: \teh.alerter.SendSystemAlert(ctx, fmt.Sprintf(\"Error Alert: %s\", apiError.Code), apiError.Message, \"error_handler\", AlertSeverity(severity), metadata)\n528: }\n",
+			"line": "527",
+			"column": "2",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/crosscutting/crosscutting_layer.go",
+			"code": "198: \t\tif c.Writer.Status() \u003e= 500 {\n199: \t\t\tccl.alertingService.SendSystemAlert(ctx, \"Server Error\",\n200: \t\t\t\tfmt.Sprintf(\"Server error %d on %s %s\", c.Writer.Status(), method, endpoint),\n201: \t\t\t\t\"crosscutting_middleware\", AlertSeverityHigh, map[string]interface{}{\n202: \t\t\t\t\t\"status_code\": c.Writer.Status(),\n203: \t\t\t\t\t\"method\":      method,\n204: \t\t\t\t\t\"endpoint\":    endpoint,\n205: \t\t\t\t\t\"user_id\":     userID,\n206: \t\t\t\t\t\"ip\":          ipAddress,\n207: \t\t\t\t})\n208: \t\t}\n",
+			"line": "199-207",
+			"column": "4",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/common/test_db.go",
+			"code": "308: \tif err := tdb.SetupTestDB(); err != nil {\n309: \t\ttdb.Close()\n310: \t\tt.Fatalf(\"Failed to setup test database: %v\", err)\n",
+			"line": "309",
+			"column": "3",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/common/test_db.go",
+			"code": "297: \t}\n298: \ttdb.Close()\n299: }\n",
+			"line": "298",
+			"column": "2",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/common/httputils.go",
+			"code": "14: \tw.WriteHeader(statusCode)\n15: \tjson.NewEncoder(w).Encode(data)\n16: }\n",
+			"line": "15",
+			"column": "2",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/omid/Documents/GitHub/AI-Styler-Backend/internal/common/http_errors.go",
+			"code": "49: \tw.WriteHeader(statusCode)\n50: \tjson.NewEncoder(w).Encode(response)\n51: \n",
+			"line": "50",
+			"column": "2",
+			"nosec": false,
+			"suppressions": null
+		}
+	],
+	"Stats": {
+		"files": 154,
+		"lines": 48097,
+		"nosec": 0,
+		"found": 127
+	},
+	"GosecVersion": "dev"
+}

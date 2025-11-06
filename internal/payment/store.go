@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/lib/pq"
@@ -116,12 +117,29 @@ func (s *PaymentStoreImpl) UpdatePayment(ctx context.Context, paymentID string, 
 		return s.GetPayment(ctx, paymentID)
 	}
 
+	// Whitelist of allowed payment fields to prevent SQL injection
+	allowedFields := map[string]bool{
+		"status":              true,
+		"gateway_track_id":    true,
+		"gateway_ref_number":  true,
+		"gateway_card_number": true,
+		"description":         true,
+		"callback_url":        true,
+		"return_url":          true,
+		"paid_at":             true,
+		"expires_at":          true,
+	}
+
 	// Build dynamic query
 	setParts := []string{}
 	args := []interface{}{}
 	argIndex := 1
 
 	for field, value := range updates {
+		// Validate field name to prevent SQL injection
+		if !allowedFields[field] {
+			return Payment{}, fmt.Errorf("invalid field name: %s", field)
+		}
 		setParts = append(setParts, fmt.Sprintf("%s = $%d", field, argIndex))
 		args = append(args, value)
 		argIndex++
@@ -135,6 +153,9 @@ func (s *PaymentStoreImpl) UpdatePayment(ctx context.Context, paymentID string, 
 	// Add payment ID to args
 	args = append(args, paymentID)
 
+	// Join all set parts with commas
+	setClause := strings.Join(setParts, ", ")
+
 	query := fmt.Sprintf(`
 		UPDATE payments 
 		SET %s
@@ -142,17 +163,7 @@ func (s *PaymentStoreImpl) UpdatePayment(ctx context.Context, paymentID string, 
 		RETURNING id, user_id, plan_id, amount, currency, status, payment_method, 
 			gateway, gateway_track_id, gateway_ref_number, gateway_card_number, 
 			description, callback_url, return_url, created_at, updated_at, paid_at, expires_at`,
-		fmt.Sprintf("%s", setParts[0]), argIndex)
-
-	// Fix the query building
-	query = fmt.Sprintf(`
-		UPDATE payments 
-		SET %s
-		WHERE id = $%d
-		RETURNING id, user_id, plan_id, amount, currency, status, payment_method, 
-			gateway, gateway_track_id, gateway_ref_number, gateway_card_number, 
-			description, callback_url, return_url, created_at, updated_at, paid_at, expires_at`,
-		fmt.Sprintf("%s", setParts[0]), argIndex)
+		setClause, argIndex)
 
 	var payment Payment
 	err := s.db.QueryRowContext(ctx, query, args...).Scan(
@@ -351,12 +362,27 @@ func (s *PaymentStoreImpl) UpdatePlan(ctx context.Context, planID string, update
 		return s.GetPlan(ctx, planID)
 	}
 
+	// Whitelist of allowed plan fields to prevent SQL injection
+	allowedFields := map[string]bool{
+		"name":                      true,
+		"display_name":              true,
+		"description":               true,
+		"price_per_month_cents":     true,
+		"monthly_conversions_limit": true,
+		"features":                  true,
+		"is_active":                 true,
+	}
+
 	// Build dynamic query
 	setParts := []string{}
 	args := []interface{}{}
 	argIndex := 1
 
 	for field, value := range updates {
+		// Validate field name to prevent SQL injection
+		if !allowedFields[field] {
+			return PaymentPlan{}, fmt.Errorf("invalid field name: %s", field)
+		}
 		setParts = append(setParts, fmt.Sprintf("%s = $%d", field, argIndex))
 		args = append(args, value)
 		argIndex++
@@ -370,13 +396,16 @@ func (s *PaymentStoreImpl) UpdatePlan(ctx context.Context, planID string, update
 	// Add plan ID to args
 	args = append(args, planID)
 
+	// Join all set parts with commas
+	setClause := strings.Join(setParts, ", ")
+
 	query := fmt.Sprintf(`
 		UPDATE payment_plans 
 		SET %s
 		WHERE id = $%d
 		RETURNING id, name, display_name, description, price_per_month_cents, 
 			monthly_conversions_limit, features, is_active, created_at, updated_at`,
-		fmt.Sprintf("%s", setParts[0]), argIndex)
+		setClause, argIndex)
 
 	var plan PaymentPlan
 	err := s.db.QueryRowContext(ctx, query, args...).Scan(

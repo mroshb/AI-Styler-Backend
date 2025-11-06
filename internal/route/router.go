@@ -285,6 +285,9 @@ func NewWithServices(
 ) *gin.Engine {
 	r := gin.New()
 
+	// Load HTML templates
+	r.LoadHTMLGlob("templates/*")
+
 	// Create monitoring middleware
 	requestLogger := middleware.NewRequestLoggerMiddleware(monitor.Logger())
 	monitoringMiddleware := middleware.NewMonitoringMiddleware(monitor)
@@ -566,19 +569,23 @@ func mountPayment(r *gin.RouterGroup) {
 	auditLogger := &realAuditLogger{db: db}
 	rateLimiter := &realRateLimiter{}
 
-	// Create payment service and handler
-	paymentHandler := payment.NewHandler(
-		payment.NewService(
-			payment.NewPaymentStore(db),
-			payment.NewZarinpalGateway("zibal", "https://gateway.zibal.ir"),
-			userService,
-			notificationService,
-			quotaService,
-			auditLogger,
-			rateLimiter,
-			payment.NewPaymentConfigService(),
-		),
+	// Create payment service
+	paymentService := payment.NewService(
+		payment.NewPaymentStore(db),
+		payment.NewZarinpalGateway("zibal", "https://gateway.zibal.ir"),
+		userService,
+		notificationService,
+		quotaService,
+		auditLogger,
+		rateLimiter,
+		payment.NewPaymentConfigService(),
 	)
+
+	// Create BazaarPay service
+	bazaarPayService := payment.NewBazaarPayService(db)
+
+	// Create payment handler with BazaarPay
+	paymentHandler := payment.NewHandlerWithBazaarPay(paymentService, bazaarPayService)
 
 	// Mount payment routes
 	paymentGroup := r.Group("/api")

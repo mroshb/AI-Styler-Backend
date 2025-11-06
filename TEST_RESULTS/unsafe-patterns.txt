@@ -1,0 +1,63 @@
+./internal/route/router_crosscutting.go:			BlockedTypes:             []string{"application/x-executable", "application/x-msdownload", "application/x-javascript"},
+./internal/security/rate_limiter.go:// Execute executes a function with circuit breaker protection
+./internal/notification/template.go:		return "", fmt.Errorf("failed to execute template: %w", err)
+./internal/payment/handler.go:// GetPaymentStatus handles payment status retrieval
+./internal/payment/handler.go:// GetPaymentHistory handles payment history retrieval
+./internal/payment/handler.go:// GetPlans handles plans retrieval
+./internal/payment/handler.go:// GetUserActivePlan handles user active plan retrieval
+./internal/storage/handler.go:// GetImage handles image retrieval
+./internal/common/retry.go:// Retry executes a function (single attempt only)
+./internal/common/retry.go:// RetryWithResult executes a function and returns the result (single attempt only)
+./internal/common/retry.go:// RetryWithCustomDelay executes a function (single attempt only)
+./internal/common/retry.go:// RetryWithExponentialBackoff executes a function with exponential backoff
+./internal/common/retry.go:// RetryWithLinearBackoff executes a function with linear backoff
+./internal/common/retry.go:// RetryWithFixedDelay executes a function with fixed delay
+./internal/common/retry.go:// RetryWithJitter executes a function with jitter to avoid thundering herd
+./internal/common/retry.go:// RetryWithStats executes a function and returns statistics (single attempt only)
+./internal/common/retry.go:// CircuitBreakerRetry executes a function (single attempt only)
+./internal/crosscutting/extensibility_framework.go:// ServicePriority represents service execution priority
+./internal/crosscutting/extensibility_framework.go:	ParallelExecution bool `json:"parallel_execution"`
+./internal/crosscutting/extensibility_framework.go:// ServiceMetrics provides metrics for service execution
+./internal/crosscutting/extensibility_framework.go:	HookExecutions     map[string]int64   `json:"hook_executions"`
+./internal/crosscutting/extensibility_framework.go:	PipelineExecutions map[string]int64   `json:"pipeline_executions"`
+./internal/crosscutting/extensibility_framework.go:	ExecutionTimes     map[string]float64 `json:"execution_times"`
+./internal/crosscutting/extensibility_framework.go:// ExecutePipeline executes a service pipeline
+./internal/crosscutting/extensibility_framework.go:		return ef.executePipelineParallel(ctx, pipeline, event)
+./internal/crosscutting/extensibility_framework.go:		return ef.executePipelineSequential(ctx, pipeline, event)
+./internal/crosscutting/extensibility_framework.go:// ExecuteHooksByType executes all hooks of a specific type
+./internal/crosscutting/extensibility_framework.go:		return ef.executeHooksParallel(ctx, hooks, event)
+./internal/crosscutting/extensibility_framework.go:		return ef.executeHooksSequential(ctx, hooks, event)
+./internal/crosscutting/extensibility_framework.go:// executePipelineSequential executes pipeline hooks sequentially
+./internal/crosscutting/extensibility_framework.go:func (ef *ExtensibilityFramework) executePipelineSequential(ctx context.Context, pipeline *ServicePipeline, event *ServiceEvent) error {
+./internal/crosscutting/extensibility_framework.go:		err := ef.executeHook(ctx, hook, event)
+./internal/crosscutting/extensibility_framework.go:				return fmt.Errorf("pipeline execution failed at hook %s: %w", hook.ID, err)
+./internal/crosscutting/extensibility_framework.go:				ef.logger.Error(ctx, "Pipeline hook execution failed", map[string]interface{}{
+./internal/crosscutting/extensibility_framework.go:// executePipelineParallel executes pipeline hooks in parallel
+./internal/crosscutting/extensibility_framework.go:func (ef *ExtensibilityFramework) executePipelineParallel(ctx context.Context, pipeline *ServicePipeline, event *ServiceEvent) error {
+./internal/crosscutting/extensibility_framework.go:			err := ef.executeHook(ctx, h, event)
+./internal/crosscutting/extensibility_framework.go:			return fmt.Errorf("pipeline execution failed with %d errors", len(errors))
+./internal/crosscutting/extensibility_framework.go:			ef.logger.Error(ctx, "Pipeline execution completed with errors", map[string]interface{}{
+./internal/crosscutting/extensibility_framework.go:// executeHooksSequential executes hooks sequentially
+./internal/crosscutting/extensibility_framework.go:func (ef *ExtensibilityFramework) executeHooksSequential(ctx context.Context, hooks []*ServiceHook, event *ServiceEvent) error {
+./internal/crosscutting/extensibility_framework.go:		err := ef.executeHook(ctx, hook, event)
+./internal/crosscutting/extensibility_framework.go:				return fmt.Errorf("hook execution failed at %s: %w", hook.ID, err)
+./internal/crosscutting/extensibility_framework.go:				ef.logger.Error(ctx, "Hook execution failed", map[string]interface{}{
+./internal/crosscutting/extensibility_framework.go:// executeHooksParallel executes hooks in parallel
+./internal/crosscutting/extensibility_framework.go:func (ef *ExtensibilityFramework) executeHooksParallel(ctx context.Context, hooks []*ServiceHook, event *ServiceEvent) error {
+./internal/crosscutting/extensibility_framework.go:			err := ef.executeHook(ctx, h, event)
+./internal/crosscutting/extensibility_framework.go:		return fmt.Errorf("hook execution failed with %d errors", len(errors))
+./internal/crosscutting/extensibility_framework.go:// executeHook executes a single hook
+./internal/crosscutting/extensibility_framework.go:func (ef *ExtensibilityFramework) executeHook(ctx context.Context, hook *ServiceHook, event *ServiceEvent) error {
+./internal/crosscutting/extensibility_framework.go:// GetMetrics returns service execution metrics
+./internal/crosscutting/extensibility_framework.go:		"parallel_execution": ef.config.ParallelExecution,
+./internal/crosscutting/crosscutting_layer.go:// ExecuteServicePipeline executes a service pipeline
+./internal/crosscutting/security_checker.go:			"application/x-executable",
+./internal/crosscutting/security_checker.go:			"eval(",
+./internal/crosscutting/security_checker.go:		"script", "cmd", "exec", "eval", "javascript", "vbscript",
+./internal/crosscutting/retry_service.go:// Retry executes a function (single attempt only)
+./internal/crosscutting/retry_service.go:// RetryWithResult executes a function and returns the result (single attempt only)
+./internal/crosscutting/retry_service.go:// RetryWithCustomDelay executes a function (single attempt only)
+./internal/crosscutting/examples.go:			ccl.logger.Error(ctx, "Pipeline execution failed", map[string]interface{}{
+./internal/worker/file_validator.go:		{0x4D, 0x5A},             // Windows executable
+./internal/migration/migrate.go:			return fmt.Errorf("failed to execute migration %s: %w", filename, err)
+./scripts/migrate/main.go:			return fmt.Errorf("failed to execute migration %s: %v", filename, err)
