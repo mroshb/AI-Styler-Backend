@@ -185,31 +185,126 @@ type RetryFunc func(ctx context.Context) error
 // RetryWithResultFunc represents a function that returns a result and can be retried
 type RetryWithResultFunc func(ctx context.Context) (interface{}, error)
 
-// Retry executes a function (single attempt only)
+// Retry executes a function with retries based on configuration
 func (rs *RetryService) Retry(ctx context.Context, service string, fn RetryFunc) error {
-	err := fn(ctx)
-	if err != nil {
-		return fmt.Errorf("operation failed: %w", err)
+	if fn == nil {
+		return fmt.Errorf("operation failed: function is nil")
 	}
-	return nil
+
+	serviceConfig := rs.getServiceConfig(service)
+	var lastErr error
+
+	for attempt := 0; attempt <= serviceConfig.MaxRetries; attempt++ {
+		if err := fn(ctx); err != nil {
+			lastErr = err
+
+			// If not retryable or we've exhausted retries, return the error
+			if !rs.isRetryableError(err, serviceConfig.RetryableErrors) || attempt == serviceConfig.MaxRetries {
+				return fmt.Errorf("operation failed after %d attempt(s): %w", attempt+1, err)
+			}
+
+			// Wait before next attempt
+			delay := rs.calculateDelay(attempt, serviceConfig)
+			if delay > 0 {
+				if err := rs.sleepWithContext(ctx, delay); err != nil {
+					return fmt.Errorf("operation cancelled while waiting to retry: %w", err)
+				}
+			}
+
+			continue
+		}
+
+		// Success
+		return nil
+	}
+
+	// Should not reach here, but return defensive error
+	if lastErr != nil {
+		return fmt.Errorf("operation failed: %w", lastErr)
+	}
+	return fmt.Errorf("operation failed: unknown error")
 }
 
-// RetryWithResult executes a function and returns the result (single attempt only)
+// RetryWithResult executes a function with retries based on configuration and returns the result
 func (rs *RetryService) RetryWithResult(ctx context.Context, service string, fn RetryWithResultFunc) (interface{}, error) {
-	res, err := fn(ctx)
-	if err != nil {
-		return res, fmt.Errorf("operation failed: %w", err)
+	if fn == nil {
+		return nil, fmt.Errorf("operation failed: function is nil")
 	}
-	return res, nil
+
+	serviceConfig := rs.getServiceConfig(service)
+	var lastResult interface{}
+	var lastErr error
+
+	for attempt := 0; attempt <= serviceConfig.MaxRetries; attempt++ {
+		res, err := fn(ctx)
+		lastResult = res
+
+		if err != nil {
+			lastErr = err
+
+			if !rs.isRetryableError(err, serviceConfig.RetryableErrors) || attempt == serviceConfig.MaxRetries {
+				return res, fmt.Errorf("operation failed after %d attempt(s): %w", attempt+1, err)
+			}
+
+			delay := rs.calculateDelay(attempt, serviceConfig)
+			if delay > 0 {
+				if err := rs.sleepWithContext(ctx, delay); err != nil {
+					return res, fmt.Errorf("operation cancelled while waiting to retry: %w", err)
+				}
+			}
+
+			continue
+		}
+
+		return res, nil
+	}
+
+	if lastErr != nil {
+		return lastResult, fmt.Errorf("operation failed: %w", lastErr)
+	}
+	return lastResult, fmt.Errorf("operation failed: unknown error")
 }
 
-// RetryWithCustomDelay executes a function (single attempt only)
+// RetryWithCustomDelay executes a function with retries using a custom delay function
 func (rs *RetryService) RetryWithCustomDelay(ctx context.Context, service string, fn RetryFunc, delayFunc func(attempt int) time.Duration) error {
-	err := fn(ctx)
-	if err != nil {
-		return fmt.Errorf("operation failed: %w", err)
+	if fn == nil {
+		return fmt.Errorf("operation failed: function is nil")
 	}
-	return nil
+
+	serviceConfig := rs.getServiceConfig(service)
+	var lastErr error
+
+	for attempt := 0; attempt <= serviceConfig.MaxRetries; attempt++ {
+		if err := fn(ctx); err != nil {
+			lastErr = err
+
+			if !rs.isRetryableError(err, serviceConfig.RetryableErrors) || attempt == serviceConfig.MaxRetries {
+				return fmt.Errorf("operation failed after %d attempt(s): %w", attempt+1, err)
+			}
+
+			var delay time.Duration
+			if delayFunc != nil {
+				delay = delayFunc(attempt)
+			} else {
+				delay = rs.calculateDelay(attempt, serviceConfig)
+			}
+
+			if delay > 0 {
+				if err := rs.sleepWithContext(ctx, delay); err != nil {
+					return fmt.Errorf("operation cancelled while waiting to retry: %w", err)
+				}
+			}
+
+			continue
+		}
+
+		return nil
+	}
+
+	if lastErr != nil {
+		return fmt.Errorf("operation failed: %w", lastErr)
+	}
+	return fmt.Errorf("operation failed: unknown error")
 }
 
 // getServiceConfig returns the retry configuration for a specific service
@@ -333,4 +428,17 @@ func (rs *RetryService) AddRetryableError(pattern string) {
 // AddNonRetryableError adds a non-retryable error pattern
 func (rs *RetryService) AddNonRetryableError(pattern string) {
 	rs.config.NonRetryableErrors = append(rs.config.NonRetryableErrors, pattern)
+}
+
+// sleepWithContext waits for the specified duration or returns early if the context is done
+func (rs *RetryService) sleepWithContext(ctx context.Context, d time.Duration) error {
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
 }

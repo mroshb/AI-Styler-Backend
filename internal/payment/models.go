@@ -181,9 +181,9 @@ const (
 
 // Gateway constants
 const (
-	GatewayZarinpal = "zarinpal"
+	GatewayZarinpal  = "zarinpal"
 	GatewayBazaarPay = "bazaarpay"
-	GatewayZibal = "zibal"
+	GatewayZibal     = "zibal"
 )
 
 // Currency constants
@@ -245,42 +245,6 @@ type PrePayment struct {
 
 // PlanPayment - ذخیره پرداخت‌های موفق پلن
 type PlanPayment struct {
-	ID          int       `json:"id" db:"id"`
-	UserID      string    `json:"user_id" db:"user_id"`
-	OrderID     string    `json:"order_id" db:"order_id"`
-	RefNumber   *string   `json:"ref_number,omitempty" db:"ref_number"`
-	Amount      int64     `json:"amount" db:"amount"`
-	CardNumber  *string   `json:"card_number,omitempty" db:"card_number"`
-	Status      int       `json:"status" db:"status"`
-	Result      int       `json:"result" db:"result"`
-	Message     *string   `json:"message,omitempty" db:"message"`
-	Description *string   `json:"description,omitempty" db:"description"`
-	Segment     string    `json:"segment" db:"segment"`
-	SegmentID   int       `json:"segment_id" db:"segment_id"`
-	PaidAt      *string   `json:"paid_at,omitempty" db:"paid_at"`
-	CreatedAt   time.Time `json:"created_at" db:"created_at"`
-}
-
-// OrderPayment - ذخیره پرداخت‌های موفق سفارش
-type OrderPayment struct {
-	ID          int       `json:"id" db:"id"`
-	UserID      string    `json:"user_id" db:"user_id"`
-	OrderID     string    `json:"order_id" db:"order_id"`
-	RefNumber   *string   `json:"ref_number,omitempty" db:"ref_number"`
-	Amount      int64     `json:"amount" db:"amount"`
-	CardNumber  *string   `json:"card_number,omitempty" db:"card_number"`
-	Status      int       `json:"status" db:"status"`
-	Result      int       `json:"result" db:"result"`
-	Message     *string   `json:"message,omitempty" db:"message"`
-	Description *string   `json:"description,omitempty" db:"description"`
-	Segment     string    `json:"segment" db:"segment"`
-	SegmentID   int       `json:"segment_id" db:"segment_id"`
-	PaidAt      *string   `json:"paid_at,omitempty" db:"paid_at"`
-	CreatedAt   time.Time `json:"created_at" db:"created_at"`
-}
-
-// ShopPayment - ذخیره پرداخت‌های موفق خرید مدل
-type ShopPayment struct {
 	ID          int       `json:"id" db:"id"`
 	UserID      string    `json:"user_id" db:"user_id"`
 	OrderID     string    `json:"order_id" db:"order_id"`

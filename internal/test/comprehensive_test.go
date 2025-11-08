@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -35,7 +36,11 @@ func SetupTestSuite(t *testing.T) *TestSuite {
 	require.NoError(t, err)
 
 	// Override with test settings
-	cfg.Database.Name = "ai-styler_test"
+	testDBName := os.Getenv("TEST_DB_NAME")
+	if testDBName == "" {
+		testDBName = "ai_styler_test"
+	}
+	cfg.Database.Name = testDBName
 	cfg.Redis.DB = 1 // Use different Redis DB for tests
 	cfg.Monitoring.Environment = "testing"
 
