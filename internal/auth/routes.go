@@ -16,6 +16,7 @@ func ProvideStdMux(mux *http.ServeMux) {
 
 	mux.HandleFunc("/auth/send-otp", h.SendOTP)
 	mux.HandleFunc("/auth/verify-otp", h.VerifyOTP)
+	mux.HandleFunc("/auth/check-user", h.CheckUser)
 	mux.HandleFunc("/auth/register", h.Register)
 	mux.HandleFunc("/auth/login", h.Login)
 	mux.HandleFunc("/auth/refresh", h.Refresh)

@@ -86,7 +86,7 @@ type sendOtpReq struct {
 type sendOtpResp struct {
 	Sent         bool   `json:"sent"`
 	ExpiresInSec int    `json:"expiresInSec"`
-	Code         string `json:"code,omitempty"` // Only returned in development/mock mode
+	Code         string `json:"code,omitempty"`  // Only returned in development/mock mode
 	Debug        bool   `json:"debug,omitempty"` // Indicates if this is a debug response
 }
 
@@ -113,7 +113,7 @@ func (h *Handler) SendOTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = h.sms.Send(code, phone)
-	
+
 	// If SMS provider is mock, include the code in response for development
 	resp := sendOtpResp{
 		Sent:         true,
@@ -123,7 +123,7 @@ func (h *Handler) SendOTP(w http.ResponseWriter, r *http.Request) {
 		resp.Code = code
 		resp.Debug = true
 	}
-	
+
 	common.WriteJSON(w, http.StatusOK, resp)
 }
 
@@ -135,6 +135,14 @@ type verifyReq struct {
 
 type verifyResp struct {
 	Verified bool `json:"verified"`
+}
+
+type checkUserReq struct {
+	Phone string `json:"phone"`
+}
+
+type checkUserResp struct {
+	Registered bool `json:"registered"`
 }
 
 func (h *Handler) VerifyOTP(w http.ResponseWriter, r *http.Request) {
@@ -163,6 +171,28 @@ func (h *Handler) VerifyOTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	common.WriteJSON(w, http.StatusOK, verifyResp{Verified: false})
+}
+
+func (h *Handler) CheckUser(w http.ResponseWriter, r *http.Request) {
+	var req checkUserReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		common.WriteError(w, http.StatusBadRequest, "bad_request", "invalid json", nil)
+		return
+	}
+
+	phone := normalizePhone(req.Phone)
+	if phone == "" {
+		common.WriteError(w, http.StatusBadRequest, "bad_request", "invalid phone", nil)
+		return
+	}
+
+	exists, err := h.store.UserExists(r.Context(), phone)
+	if err != nil {
+		common.WriteError(w, http.StatusInternalServerError, "server_error", "could not check user", nil)
+		return
+	}
+
+	common.WriteJSON(w, http.StatusOK, checkUserResp{Registered: exists})
 }
 
 type registerReq struct {
@@ -291,8 +321,8 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 type refreshReq struct {
-	RefreshToken      string `json:"refreshToken"`      // camelCase (preferred)
-	RefreshTokenSnake string `json:"refresh_token"`     // snake_case (backward compatibility)
+	RefreshToken      string `json:"refreshToken"`  // camelCase (preferred)
+	RefreshTokenSnake string `json:"refresh_token"` // snake_case (backward compatibility)
 }
 
 // GetRefreshToken returns the refresh token from whichever field was provided

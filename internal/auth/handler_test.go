@@ -228,6 +228,70 @@ func TestHandler_VerifyOTP(t *testing.T) {
 	}
 }
 
+func TestHandler_CheckUser(t *testing.T) {
+	store := newMockStore()
+	store.users["+9123000000"] = User{ID: "existing-user", Phone: "+9123000000"}
+
+	handler := NewHandler(store, &mockTokenService{}, &mockRateLimiter{}, &sms.MockSMSProvider{})
+
+	tests := []struct {
+		name           string
+		request        checkUserReq
+		expectedStatus int
+		expectedBody   *checkUserResp
+	}{
+		{
+			name: "user exists",
+			request: checkUserReq{
+				Phone: "+9123000000",
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   &checkUserResp{Registered: true},
+		},
+		{
+			name: "user does not exist",
+			request: checkUserReq{
+				Phone: "+9123999999",
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   &checkUserResp{Registered: false},
+		},
+		{
+			name: "invalid phone",
+			request: checkUserReq{
+				Phone: "invalid",
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body, _ := json.Marshal(tt.request)
+			req := httptest.NewRequest("POST", "/auth/check-user", bytes.NewBuffer(body))
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+
+			handler.CheckUser(w, req)
+
+			if w.Code != tt.expectedStatus {
+				t.Errorf("Expected status %d, got %d", tt.expectedStatus, w.Code)
+			}
+
+			if tt.expectedBody != nil {
+				var resp checkUserResp
+				if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+					t.Fatalf("Failed to unmarshal response: %v", err)
+				}
+				if resp != *tt.expectedBody {
+					t.Fatalf("Expected response %+v, got %+v", *tt.expectedBody, resp)
+				}
+			}
+		})
+	}
+}
+
 func TestHandler_Register(t *testing.T) {
 	tests := []struct {
 		name           string
