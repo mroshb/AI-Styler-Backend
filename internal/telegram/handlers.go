@@ -498,11 +498,11 @@ func (h *Handlers) handlePhoto(msg *tgbotapi.Message) {
 	// Determine if this is the first or second image based on state
 	// First image: state is nil, empty, or "waiting_user_image"
 	// Second image: state is "waiting_cloth_image"
+	// Note: Both images are uploaded as "user" type since backend only supports "user", "vendor", "result"
 	isFirstImage := true // Default: first image
-	imageType := "user"  // Default: user photo
+	imageType := "user"  // Always use "user" type for both user and cloth images
 	if state != nil && state.Action == "waiting_cloth_image" {
 		isFirstImage = false
-		imageType = "cloth" // Second image is cloth
 	}
 
 	// Upload to backend
@@ -541,7 +541,7 @@ func (h *Handlers) handlePhoto(msg *tgbotapi.Message) {
 		}
 		h.sendMessage(chatID, MsgImageReceived)
 	} else if state != nil && state.Action == "waiting_cloth_image" {
-		// Second image: Store cloth image ID and show style selection
+		// Second image: Store cloth image ID and create conversion with mock=true
 		userImageID := state.Data
 		if userImageID == "" {
 			log.Printf("Warning: userImageID is empty in state data")
@@ -550,12 +550,45 @@ func (h *Handlers) handlePhoto(msg *tgbotapi.Message) {
 			return
 		}
 		log.Printf("Second image received, userImageID=%s, clothImageID=%s", userImageID, uploadResp.ID)
-		if err := h.sessionMgr.SetState(ctx, userID, "waiting_style", userImageID+":"+uploadResp.ID); err != nil {
-			log.Printf("Failed to set state: %v", err)
-			h.sendMessage(chatID, "❌ خطا در ذخیره وضعیت. لطفاً دوباره تلاش کنید.")
+		
+		// Get access token
+		accessToken, err := h.sessionMgr.GetAccessToken(ctx, userID)
+		if err != nil || accessToken == "" {
+			h.sendMessage(chatID, MsgErrorUnauthorized)
+			h.sessionMgr.ClearState(ctx, userID)
 			return
 		}
-		h.sendMessageWithKeyboard(chatID, MsgSelectStyle, StyleSelectionKeyboard())
+		
+		// Create conversion with mock=true for testing
+		convReq := ConversionRequest{
+			UserImageID:  userImageID,
+			ClothImageID: uploadResp.ID,
+			StyleName:    "default", // Default style for now
+		}
+		
+		log.Printf("Creating conversion with mock=true: userImageID=%s, clothImageID=%s", userImageID, uploadResp.ID)
+		convResp, err := h.apiClient.CreateConversionWithMock(ctx, accessToken, convReq)
+		if err != nil {
+			log.Printf("Failed to create conversion: %v", err)
+			h.sendMessage(chatID, fmt.Sprintf("❌ خطا در ایجاد تبدیل: %v", err))
+			h.sessionMgr.ClearState(ctx, userID)
+			return
+		}
+		
+		h.sessionMgr.ClearState(ctx, userID)
+		h.sendMessage(chatID, fmt.Sprintf("✅ تبدیل با موفقیت انجام شد!\n\nشناسه تبدیل: %s", convResp.ID))
+		
+		// Send result image if available
+		if convResp.ResultImageID != nil {
+			imageURL, err := h.apiClient.GetImageURL(ctx, accessToken, *convResp.ResultImageID)
+			if err == nil {
+				photo := tgbotapi.NewPhoto(chatID, tgbotapi.FileURL(imageURL))
+				photo.Caption = "نتیجه تبدیل:"
+				h.bot.Send(photo)
+			} else {
+				log.Printf("Failed to get image URL: %v", err)
+			}
+		}
 	} else {
 		// Unexpected state - this shouldn't happen in normal flow
 		log.Printf("Unexpected state: %v", state)
@@ -566,7 +599,7 @@ func (h *Handlers) handlePhoto(msg *tgbotapi.Message) {
 		if imageType == "cloth" {
 			log.Printf("Warning: Uploaded cloth image but state doesn't match waiting_cloth_image")
 			h.sendMessage(chatID, "❌ خطا در پردازش عکس لباس. لطفاً دوباره از ابتدا شروع کنید.")
-			h.sessionMgr.ClearState(ctx, userID)
+		h.sessionMgr.ClearState(ctx, userID)
 			return
 		}
 		// For other unexpected states, clear and start fresh as first image

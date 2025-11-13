@@ -442,6 +442,30 @@ func (c *APIClient) CreateConversion(ctx context.Context, accessToken string, re
 	return &result, nil
 }
 
+// CreateConversionWithMock creates a new conversion with mock=true for testing
+func (c *APIClient) CreateConversionWithMock(ctx context.Context, accessToken string, req ConversionRequest) (*ConversionResponse, error) {
+	headers := map[string]string{
+		"Authorization": "Bearer " + accessToken,
+	}
+
+	resp, err := c.doRequest(ctx, "POST", "/api/convert?mock=true", req, headers)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result ConversionResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API error: %d", resp.StatusCode)
+	}
+
+	return &result, nil
+}
+
 // GetConversion gets conversion details
 func (c *APIClient) GetConversion(ctx context.Context, accessToken, conversionID string) (*ConversionResponse, error) {
 	headers := map[string]string{
