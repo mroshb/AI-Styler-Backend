@@ -488,7 +488,15 @@ func (h *Handlers) handlePhoto(msg *tgbotapi.Message) {
 			return state.Data
 		}())
 	
-	imageType := "user" // Default: user photo
+	// Determine if this is the first or second image based on state
+	// First image: state is nil, empty, or "waiting_user_image"
+	// Second image: state is "waiting_cloth_image"
+	isFirstImage := true // Default: first image
+	imageType := "user"  // Default: user photo
+	if state != nil && state.Action == "waiting_cloth_image" {
+		isFirstImage = false
+		imageType = "cloth" // Second image is cloth
+	}
 
 	// Upload to backend
 	uploadResp, err := h.apiClient.UploadImage(ctx, accessToken, fileData, file.FilePath, mimeType, imageType)
@@ -498,11 +506,11 @@ func (h *Handlers) handlePhoto(msg *tgbotapi.Message) {
 		return
 	}
 
-	log.Printf("Image uploaded successfully: ID=%s", uploadResp.ID)
+	log.Printf("Image uploaded successfully: ID=%s, type=%s", uploadResp.ID, imageType)
 	h.sendMessage(chatID, fmt.Sprintf(MsgImageUploaded, uploadResp.ID))
 
 	// Update state based on image type
-	if state == nil || state.Action == "waiting_user_image" || state.Action == "" {
+	if isFirstImage {
 		// First image: Store user image ID and request cloth image
 		log.Printf("First image received, setting state to waiting_cloth_image with userImageID=%s", uploadResp.ID)
 		if err := h.sessionMgr.SetState(ctx, userID, "waiting_cloth_image", uploadResp.ID); err != nil {
@@ -525,7 +533,7 @@ func (h *Handlers) handlePhoto(msg *tgbotapi.Message) {
 			log.Printf("State verified successfully: action=%s, data=%s", verifyState.Action, verifyState.Data)
 		}
 		h.sendMessage(chatID, MsgImageReceived)
-	} else if state.Action == "waiting_cloth_image" {
+	} else if state != nil && state.Action == "waiting_cloth_image" {
 		// Second image: Store cloth image ID and show style selection
 		userImageID := state.Data
 		if userImageID == "" {
@@ -542,10 +550,26 @@ func (h *Handlers) handlePhoto(msg *tgbotapi.Message) {
 		}
 		h.sendMessageWithKeyboard(chatID, MsgSelectStyle, StyleSelectionKeyboard())
 	} else {
-		// Unexpected state
-		log.Printf("Unexpected state: %s, clearing state", state.Action)
-		h.sendMessage(chatID, "❌ وضعیت نامعتبر. لطفاً دوباره از ابتدا شروع کنید.")
+		// Unexpected state - this shouldn't happen in normal flow
+		log.Printf("Unexpected state: %v", state)
+		if state != nil {
+			log.Printf("State action: %s, data: %s", state.Action, state.Data)
+		}
+		// If we uploaded a cloth image but state doesn't match, something went wrong
+		if imageType == "cloth" {
+			log.Printf("Warning: Uploaded cloth image but state doesn't match waiting_cloth_image")
+			h.sendMessage(chatID, "❌ خطا در پردازش عکس لباس. لطفاً دوباره از ابتدا شروع کنید.")
+			h.sessionMgr.ClearState(ctx, userID)
+			return
+		}
+		// For other unexpected states, clear and start fresh as first image
 		h.sessionMgr.ClearState(ctx, userID)
+		if err := h.sessionMgr.SetState(ctx, userID, "waiting_cloth_image", uploadResp.ID); err != nil {
+			log.Printf("Failed to set state: %v", err)
+			h.sendMessage(chatID, "❌ خطا در ذخیره وضعیت. لطفاً دوباره تلاش کنید.")
+			return
+		}
+		h.sendMessage(chatID, MsgImageReceived)
 	}
 }
 

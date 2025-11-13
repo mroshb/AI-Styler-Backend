@@ -550,11 +550,11 @@ func (h *Handler) returnMockConversion(w http.ResponseWriter, r *http.Request, u
 
 	// Generate mock image URLs
 	// For user and cloth images, use real API endpoints (these images exist)
-	// For result image (mock), use a fixed mock image URL
+	// For result image (mock), use a placeholder image service
 	userImageURL := fmt.Sprintf("%s/api/images/%s", baseURL, userImageID)
 	clothImageURL := fmt.Sprintf("%s/api/images/%s", baseURL, clothImageID)
-	// Use fixed mock result image URL
-	resultImageURL := "https://mynaa.ir/assets/images/slider/Shadmehr.jpg"
+	// Use picsum.photos for mock result image
+	resultImageURL := "https://fastly.picsum.photos/id/565/200/300.jpg?hmac=Ho0T-TCTMRX_uDDGzaLhGzTmukSZdDjpGZJTbL0NY3k"
 
 	mockResponse := ConversionResponse{
 		ID:               conversionID,
