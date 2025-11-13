@@ -421,16 +421,19 @@ func (s *Storage) GetUserState(ctx context.Context, telegramUserID int64) (*User
 		return nil, nil
 	}
 
-	// Unmarshal state data
-	var state UserState
-	state.Action = action
-	state.Data = stateData
-	state.ExpiresAt = expiresAt
+	// Create state object
+	state := &UserState{
+		Action:    action,
+		Data:      stateData,
+		ExpiresAt: expiresAt,
+	}
+
+	log.Printf("State object created: action=%s, data=%s, expiresAt=%v", state.Action, state.Data, state.ExpiresAt)
 
 	// Cache in Redis for faster access next time (if available)
 	if s.redis != nil {
 		key := fmt.Sprintf("telegram:state:%d", telegramUserID)
-		data, err := json.Marshal(&state)
+		data, err := json.Marshal(state)
 		if err == nil {
 			ttl := time.Until(state.ExpiresAt)
 			if ttl > 0 {
@@ -440,7 +443,8 @@ func (s *Storage) GetUserState(ctx context.Context, telegramUserID int64) (*User
 		}
 	}
 
-	return &state, nil
+	log.Printf("Returning state from GetUserState: action=%s, data=%s", state.Action, state.Data)
+	return state, nil
 }
 
 // DeleteUserState deletes temporary user state from Redis and database

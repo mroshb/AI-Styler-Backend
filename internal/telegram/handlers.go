@@ -467,11 +467,18 @@ func (h *Handlers) handlePhoto(msg *tgbotapi.Message) {
 
 	// Get state to determine image type
 	// First image is user photo, second image is cloth/garment
+	log.Printf("Getting state for user %d", userID)
 	state, err := h.sessionMgr.GetState(ctx, userID)
 	if err != nil {
 		log.Printf("Failed to get state: %v", err)
 		h.sendMessage(chatID, MsgErrorGeneric)
 		return
+	}
+	
+	if state == nil {
+		log.Printf("State is nil for user %d", userID)
+	} else {
+		log.Printf("State received in handler: action=%s, data=%s, expiresAt=%v", state.Action, state.Data, state.ExpiresAt)
 	}
 	
 	log.Printf("Current state: action=%s, data=%s", 
