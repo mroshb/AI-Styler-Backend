@@ -353,10 +353,10 @@ func (s *Storage) SetUserState(ctx context.Context, telegramUserID int64, state 
 	// Store full state as JSON in Redis
 	if s.redis != nil {
 		key := fmt.Sprintf("telegram:state:%d", telegramUserID)
-		ttl := time.Until(state.ExpiresAt)
-		if ttl <= 0 {
-			ttl = 1 * time.Hour // Default TTL
-		}
+	ttl := time.Until(state.ExpiresAt)
+	if ttl <= 0 {
+		ttl = 1 * time.Hour // Default TTL
+	}
 
 		// Marshal full state for Redis
 		redisData, err := json.Marshal(state)
@@ -373,16 +373,16 @@ func (s *Storage) SetUserState(ctx context.Context, telegramUserID int64, state 
 func (s *Storage) GetUserState(ctx context.Context, telegramUserID int64) (*UserState, error) {
 	// Try Redis first
 	if s.redis != nil {
-		key := fmt.Sprintf("telegram:state:%d", telegramUserID)
-		data, err := s.redis.Get(ctx, key).Result()
+	key := fmt.Sprintf("telegram:state:%d", telegramUserID)
+	data, err := s.redis.Get(ctx, key).Result()
 		if err == nil {
-			var state UserState
-			if err := json.Unmarshal([]byte(data), &state); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal state: %w", err)
-			}
+	var state UserState
+	if err := json.Unmarshal([]byte(data), &state); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal state: %w", err)
+	}
 
-			// Check if expired
-			if time.Now().After(state.ExpiresAt) {
+	// Check if expired
+	if time.Now().After(state.ExpiresAt) {
 				// Delete expired state from both Redis and database
 				s.DeleteUserState(ctx, telegramUserID)
 				return nil, nil
@@ -447,7 +447,7 @@ func (s *Storage) GetUserState(ctx context.Context, telegramUserID int64) (*User
 func (s *Storage) DeleteUserState(ctx context.Context, telegramUserID int64) error {
 	// Delete from Redis if available
 	if s.redis != nil {
-		key := fmt.Sprintf("telegram:state:%d", telegramUserID)
+	key := fmt.Sprintf("telegram:state:%d", telegramUserID)
 		s.redis.Del(ctx, key) // Ignore error
 	}
 

@@ -23,6 +23,8 @@ func NewHandler(service *Service) *Handler {
 }
 
 // CreateConversion handles POST /convert
+// This endpoint always waits for the conversion to complete and returns the full result
+// The endpoint uses long polling to wait for the conversion to finish
 func (h *Handler) CreateConversion(w http.ResponseWriter, r *http.Request) {
 	userID := common.GetUserIDFromContext(r.Context())
 	if userID == "" {
@@ -30,10 +32,17 @@ func (h *Handler) CreateConversion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if wait parameter is present for long polling
-	waitParam := r.URL.Query().Get("wait")
-	if waitParam == "true" || waitParam == "1" {
-		h.CreateConversionWithWait(w, r)
+	// Always wait for conversion to complete and return full result
+	h.CreateConversionWithWait(w, r)
+}
+
+// CreateConversionImmediate handles POST /convert?wait=false
+// DEPRECATED: This endpoint is no longer used. All conversions now wait for completion.
+// This endpoint creates a conversion and returns immediately with pending status
+func (h *Handler) CreateConversionImmediate(w http.ResponseWriter, r *http.Request) {
+	userID := common.GetUserIDFromContext(r.Context())
+	if userID == "" {
+		common.WriteError(w, http.StatusUnauthorized, "unauthorized", "user not authenticated", nil)
 		return
 	}
 
@@ -46,7 +55,7 @@ func (h *Handler) CreateConversion(w http.ResponseWriter, r *http.Request) {
 	// Validate required fields using helper methods that support both formats
 	userImageID := req.GetUserImageID()
 	clothImageID := req.GetClothImageID()
-	
+
 	if userImageID == "" {
 		common.WriteError(w, http.StatusBadRequest, "invalid_request", "userImageId or user_image_id is required", nil)
 		return
@@ -73,7 +82,7 @@ func (h *Handler) CreateConversion(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// Log the error for debugging
 		fmt.Printf("CreateConversion error: %v\n", err)
-		
+
 		if strings.Contains(err.Error(), "quota exceeded") {
 			common.WriteError(w, http.StatusForbidden, "quota_exceeded", "You have exceeded your free conversion limit. Please upgrade your plan to continue.", map[string]interface{}{
 				"remaining_free":   0,
@@ -105,8 +114,9 @@ func (h *Handler) CreateConversion(w http.ResponseWriter, r *http.Request) {
 	common.WriteJSON(w, http.StatusCreated, conversion)
 }
 
-// CreateConversionWithWait handles POST /convert?wait=true
+// CreateConversionWithWait handles POST /convert
 // This endpoint creates a conversion and waits (long polling) until it's completed
+// It always returns the full conversion result with status, resultImageId, and all details
 func (h *Handler) CreateConversionWithWait(w http.ResponseWriter, r *http.Request) {
 	userID := common.GetUserIDFromContext(r.Context())
 	if userID == "" {
@@ -123,7 +133,7 @@ func (h *Handler) CreateConversionWithWait(w http.ResponseWriter, r *http.Reques
 	// Validate required fields
 	userImageID := req.GetUserImageID()
 	clothImageID := req.GetClothImageID()
-	
+
 	if userImageID == "" {
 		common.WriteError(w, http.StatusBadRequest, "invalid_request", "userImageId or user_image_id is required", nil)
 		return
@@ -150,7 +160,7 @@ func (h *Handler) CreateConversionWithWait(w http.ResponseWriter, r *http.Reques
 	conversion, err := h.service.CreateConversion(r.Context(), userID, normalizedReq)
 	if err != nil {
 		fmt.Printf("CreateConversionWithWait error: %v\n", err)
-		
+
 		if strings.Contains(err.Error(), "quota exceeded") {
 			common.WriteError(w, http.StatusForbidden, "quota_exceeded", "You have exceeded your free conversion limit. Please upgrade your plan to continue.", map[string]interface{}{
 				"remaining_free":   0,
@@ -204,7 +214,7 @@ func (h *Handler) CreateConversionWithWait(w http.ResponseWriter, r *http.Reques
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("X-Accel-Buffering", "no") // Disable nginx buffering for long polling
-	
+
 	// If conversion is already completed or failed, return immediately
 	if conversion.Status == ConversionStatusCompleted || conversion.Status == ConversionStatusFailed {
 		common.WriteJSON(w, http.StatusOK, conversion)
@@ -222,7 +232,7 @@ func (h *Handler) CreateConversionWithWait(w http.ResponseWriter, r *http.Reques
 	// Give worker a tiny moment to process (especially if it's very fast)
 	// But also check immediately before starting the watch loop
 	time.Sleep(10 * time.Millisecond)
-	
+
 	// Quick check before starting watch loop - worker might have already finished
 	quickCheck, err := h.service.GetConversion(ctx, conversion.ID, userID)
 	if err == nil && (quickCheck.Status == ConversionStatusCompleted || quickCheck.Status == ConversionStatusFailed) {
@@ -247,7 +257,7 @@ func (h *Handler) CreateConversionWithWait(w http.ResponseWriter, r *http.Reques
 				return
 			}
 		}
-		
+
 		fmt.Printf("WatchConversion error: %v\n", err)
 		if strings.Contains(err.Error(), "not found") {
 			common.WriteError(w, http.StatusNotFound, "not_found", "conversion not found", nil)
@@ -503,7 +513,7 @@ func getPathParam(r *http.Request, param string) string {
 			return str
 		}
 	}
-	
+
 	// Fallback: parse from URL path
 	path := r.URL.Path
 	parts := strings.Split(strings.Trim(path, "/"), "/")
@@ -518,7 +528,7 @@ func getPathParam(r *http.Request, param string) string {
 			}
 		}
 	}
-	
+
 	// Fallback: look for the parameter name directly (for other routes)
 	for i, part := range parts {
 		if part == param && i+1 < len(parts) {

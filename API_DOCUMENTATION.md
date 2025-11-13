@@ -241,6 +241,12 @@ POST /api/convert
 Headers: Authorization: Bearer {access_token}
 ```
 
+این endpoint کانورژن را ایجاد می‌کند و منتظر می‌ماند تا پردازش کامل شود (long polling). سپس نتیجه کامل کانورژن را برمی‌گرداند.
+
+**Query Parameters (اختیاری):**
+- `timeout` (optional): حداکثر زمان انتظار به ثانیه (پیش‌فرض: 300 ثانیه، حداکثر: 1800 ثانیه)
+- `poll_interval` (optional): فاصله بررسی وضعیت به میلی‌ثانیه (پیش‌فرض: 25ms، حداقل: 10ms، حداکثر: 10000ms)
+
 **Request Body:**
 ```json
 {
@@ -251,17 +257,33 @@ Headers: Authorization: Bearer {access_token}
 ```
 
 **Response:**
+این endpoint همیشه نتیجه کامل کانورژن را برمی‌گرداند. در صورت موفقیت، `status` برابر `completed` و `resultImageId` شامل شناسه تصویر نتیجه است.
+
 ```json
 {
   "id": "conversion-uuid",
   "userId": "user-uuid",
   "userImageId": "image-uuid",
   "clothImageId": "cloth-uuid",
-  "resultImageId": null,
-  "status": "pending",
-  "createdAt": "2025-11-04T10:00:00Z"
+  "status": "completed",
+  "resultImageId": "result-image-uuid",
+  "errorMessage": null,
+  "processingTimeMs": 5000,
+  "createdAt": "2025-11-04T10:00:00Z",
+  "updatedAt": "2025-11-04T10:05:00Z",
+  "completedAt": "2025-11-04T10:05:00Z",
+  "userImageUrl": "https://example.com/user-image.jpg",
+  "clothImageUrl": "https://example.com/cloth-image.jpg",
+  "resultImageUrl": "https://example.com/result-image.jpg"
 }
 ```
+
+**نکات:**
+- این endpoint همیشه منتظر می‌ماند تا کانورژن کامل شود و نتیجه کامل را برمی‌گرداند
+- نیازی به استفاده از endpoint `GET /api/conversion/{id}` نیست
+- در صورت خطا، `status` برابر `failed` و `errorMessage` شامل پیام خطا است
+- فیلدهای `userImageUrl`, `clothImageUrl`, `resultImageUrl` در صورت وجود URL تصویر نمایش داده می‌شوند
+- `status` می‌تواند یکی از مقادیر زیر باشد: `pending`, `processing`, `completed`, `failed`
 
 ---
 
@@ -302,12 +324,60 @@ Headers: Authorization: Bearer {access_token}
 - `pageSize` (optional, default: 20, max: 100)
 - `status` (optional): pending, processing, completed, failed, cancelled
 
+**Response:**
+```json
+{
+  "conversions": [
+    {
+      "id": "conversion-uuid",
+      "userId": "user-uuid",
+      "userImageId": "image-uuid",
+      "clothImageId": "cloth-uuid",
+      "status": "completed",
+      "resultImageId": "result-image-uuid",
+      "errorMessage": null,
+      "processingTimeMs": 5000,
+      "createdAt": "2025-11-04T10:00:00Z",
+      "updatedAt": "2025-11-04T10:05:00Z",
+      "completedAt": "2025-11-04T10:05:00Z",
+      "userImageUrl": "https://example.com/user-image.jpg",
+      "clothImageUrl": "https://example.com/cloth-image.jpg",
+      "resultImageUrl": "https://example.com/result-image.jpg"
+    }
+  ],
+  "total": 100,
+  "page": 1,
+  "pageSize": 20,
+  "totalPages": 5
+}
+```
+
 ---
 
 ### Get Conversion
 ```
 GET /api/conversion/:id
 Headers: Authorization: Bearer {access_token}
+```
+
+**Response:**
+```json
+{
+  "id": "conversion-uuid",
+  "userId": "user-uuid",
+  "userImageId": "image-uuid",
+  "clothImageId": "cloth-uuid",
+  "status": "completed",
+  "resultImageId": "result-image-uuid",
+  "errorMessage": null,
+  "processingTimeMs": 5000,
+  "createdAt": "2025-11-04T10:00:00Z",
+  "updatedAt": "2025-11-04T10:05:00Z",
+  "completedAt": "2025-11-04T10:05:00Z",
+  "userImageUrl": "https://example.com/user-image.jpg",
+  "clothImageUrl": "https://example.com/cloth-image.jpg",
+  "resultImageUrl": "https://example.com/result-image.jpg"
+}
 ```
 
 ---
