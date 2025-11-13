@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode"
 
 	"ai-styler/internal/common"
 	"ai-styler/internal/config"
@@ -238,9 +239,10 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		common.WriteError(w, http.StatusBadRequest, "bad_request", "invalid phone number", nil)
 		return
 	}
-	if len(req.Password) < 10 {
-		log.Printf("Register: Password too short - length: %d", len(req.Password))
-		common.WriteError(w, http.StatusBadRequest, "bad_request", "password must be at least 10 characters", nil)
+	valid, errMsg := validatePassword(req.Password)
+	if !valid {
+		log.Printf("Register: Password validation failed - length: %d, error: %s", len(req.Password), errMsg)
+		common.WriteError(w, http.StatusBadRequest, "bad_request", errMsg, nil)
 		return
 	}
 	if req.Role != "user" && req.Role != "vendor" {
@@ -450,6 +452,44 @@ func normalizePhone(p string) string {
 		return ""
 	}
 	return p
+}
+
+// validatePassword checks if password meets requirements:
+// - At least 8 characters
+// - Contains at least one uppercase letter
+// - Contains at least one lowercase letter
+// - Contains at least one digit
+func validatePassword(password string) (bool, string) {
+	if len(password) < 8 {
+		return false, "password must be at least 8 characters"
+	}
+
+	hasUpper := false
+	hasLower := false
+	hasDigit := false
+
+	for _, char := range password {
+		switch {
+		case unicode.IsUpper(char):
+			hasUpper = true
+		case unicode.IsLower(char):
+			hasLower = true
+		case unicode.IsDigit(char):
+			hasDigit = true
+		}
+	}
+
+	if !hasUpper {
+		return false, "password must contain at least one uppercase letter"
+	}
+	if !hasLower {
+		return false, "password must contain at least one lowercase letter"
+	}
+	if !hasDigit {
+		return false, "password must contain at least one digit"
+	}
+
+	return true, ""
 }
 
 func clientIP(r *http.Request) string {
