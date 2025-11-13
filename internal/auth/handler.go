@@ -217,12 +217,24 @@ type registerResp struct {
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var req registerReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("Register: JSON decode error: %v", err)
 		common.WriteError(w, http.StatusBadRequest, "bad_request", "invalid json", nil)
 		return
 	}
 	phone := normalizePhone(req.Phone)
-	if phone == "" || len(req.Password) < 10 || (req.Role != "user" && req.Role != "vendor") {
-		common.WriteError(w, http.StatusBadRequest, "bad_request", "invalid input", nil)
+	if phone == "" {
+		log.Printf("Register: Invalid phone - original: %q, normalized: %q", req.Phone, phone)
+		common.WriteError(w, http.StatusBadRequest, "bad_request", "invalid phone number", nil)
+		return
+	}
+	if len(req.Password) < 10 {
+		log.Printf("Register: Password too short - length: %d", len(req.Password))
+		common.WriteError(w, http.StatusBadRequest, "bad_request", "password must be at least 10 characters", nil)
+		return
+	}
+	if req.Role != "user" && req.Role != "vendor" {
+		log.Printf("Register: Invalid role - provided: %q", req.Role)
+		common.WriteError(w, http.StatusBadRequest, "bad_request", "role must be 'user' or 'vendor'", nil)
 		return
 	}
 	if exists, _ := h.store.UserExists(r.Context(), phone); exists {
