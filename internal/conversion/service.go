@@ -350,3 +350,81 @@ func (s *Service) GetConversionMetrics(ctx context.Context, userID, timeRange st
 
 	return metrics, nil
 }
+
+// WatchConversion waits for a conversion to complete and returns the result
+// This function polls the conversion status until it's completed or failed
+// The ctx parameter should already have a timeout applied by the caller
+// pollInterval: interval between status checks (default: 1 second)
+func (s *Service) WatchConversion(ctx context.Context, conversionID, userID string, timeout, pollInterval time.Duration) (ConversionResponse, error) {
+	// Set defaults for poll interval
+	if pollInterval <= 0 {
+		pollInterval = 1 * time.Second
+	}
+
+	// Create ticker for polling
+	ticker := time.NewTicker(pollInterval)
+	defer ticker.Stop()
+
+	// Initial check
+	conversion, err := s.store.GetConversionWithDetails(ctx, conversionID)
+	if err != nil {
+		return ConversionResponse{}, fmt.Errorf("failed to get conversion: %w", err)
+	}
+
+	// Check ownership
+	if conversion.UserID != userID {
+		return ConversionResponse{}, fmt.Errorf("conversion not found")
+	}
+
+	// If already completed or failed, return immediately
+	if conversion.Status == ConversionStatusCompleted || conversion.Status == ConversionStatusFailed {
+		return conversion, nil
+	}
+
+	// Store the last known conversion status
+	lastKnownConversion := conversion
+
+	// Poll until completed or timeout
+	for {
+		select {
+		case <-ctx.Done():
+			// Timeout or context cancelled - return last known status
+			if ctx.Err() == context.DeadlineExceeded {
+				// Try to get latest status with a fresh context (with short timeout)
+				// This allows us to get the current status even if the main context timed out
+				statusCtx, statusCancel := context.WithTimeout(context.Background(), 2*time.Second)
+				current, err := s.store.GetConversionWithDetails(statusCtx, conversionID)
+				statusCancel()
+				
+				if err == nil {
+					// Successfully retrieved current status
+					return current, nil
+				}
+				// If we can't get the latest status, return the last known status
+				return lastKnownConversion, nil
+			}
+			// Context was cancelled for other reasons
+			return ConversionResponse{}, fmt.Errorf("context cancelled: %w", ctx.Err())
+
+		case <-ticker.C:
+			// Check status
+			current, err := s.store.GetConversionWithDetails(ctx, conversionID)
+			if err != nil {
+				// If context is done, return the error from context
+				if ctx.Err() != nil {
+					// Return last known status instead of error
+					return lastKnownConversion, nil
+				}
+				return ConversionResponse{}, fmt.Errorf("failed to get conversion: %w", err)
+			}
+
+			// Update last known conversion
+			lastKnownConversion = current
+
+			// If status changed to completed or failed, return
+			if current.Status == ConversionStatusCompleted || current.Status == ConversionStatusFailed {
+				return current, nil
+			}
+		}
+	}
+}

@@ -276,7 +276,23 @@ func (h *Handlers) handleContact(msg *tgbotapi.Message) {
 		}
 
 		h.sessionMgr.ClearState(ctx, userID)
-		h.sendMessageWithKeyboard(chatID, MsgLoginSuccess, MainMenuKeyboard())
+		
+		// Send login success message with password info
+		loginMsg := MsgLoginSuccess + "\n\n" +
+			"📱 اطلاعات حساب کاربری شما:\n" +
+			"━━━━━━━━━━━━━━━━━━━━\n" +
+			"📞 شماره تلفن: " + phone + "\n" +
+			"🔑 رمز عبور: `" + defaultPassword + "`\n" +
+			"━━━━━━━━━━━━━━━━━━━━\n\n" +
+			"💡 نکته:\n" +
+			"• این رمز عبور برای ورود از طریق وب‌سایت یا اپلیکیشن استفاده می‌شود\n" +
+			"• می‌توانید این رمز را در تنظیمات حساب کاربری خود تغییر دهید"
+		
+		h.sendMessage(chatID, loginMsg)
+		
+		// Send main menu after a short delay
+		time.Sleep(500 * time.Millisecond)
+		h.sendMessageWithKeyboard(chatID, "منوی اصلی:", MainMenuKeyboard())
 		return
 	}
 
@@ -346,7 +362,24 @@ func (h *Handlers) handleContact(msg *tgbotapi.Message) {
 	}
 
 	h.sessionMgr.ClearState(ctx, userID)
-	h.sendMessageWithKeyboard(chatID, MsgRegistrationSuccess, MainMenuKeyboard())
+	
+	// Send registration success message with credentials
+	successMsg := MsgRegistrationSuccess + "\n\n" +
+		"📱 اطلاعات حساب کاربری شما:\n" +
+		"━━━━━━━━━━━━━━━━━━━━\n" +
+		"📞 شماره تلفن: " + phone + "\n" +
+		"🔑 رمز عبور: `" + defaultPassword + "`\n" +
+		"━━━━━━━━━━━━━━━━━━━━\n\n" +
+		"💡 نکته مهم:\n" +
+		"• این رمز عبور برای ورود از طریق وب‌سایت یا اپلیکیشن استفاده می‌شود\n" +
+		"• می‌توانید این رمز را در تنظیمات حساب کاربری خود تغییر دهید\n" +
+		"• برای استفاده از ربات، نیازی به وارد کردن رمز نیست"
+	
+	h.sendMessage(chatID, successMsg)
+	
+	// Send main menu after a short delay
+	time.Sleep(500 * time.Millisecond)
+	h.sendMessageWithKeyboard(chatID, "منوی اصلی:", MainMenuKeyboard())
 }
 
 // handlePasswordInput handles password input (for future use)

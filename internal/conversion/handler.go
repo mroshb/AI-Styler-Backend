@@ -1,11 +1,13 @@
 package conversion
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"ai-styler/internal/common"
 )
@@ -25,6 +27,13 @@ func (h *Handler) CreateConversion(w http.ResponseWriter, r *http.Request) {
 	userID := common.GetUserIDFromContext(r.Context())
 	if userID == "" {
 		common.WriteError(w, http.StatusUnauthorized, "unauthorized", "user not authenticated", nil)
+		return
+	}
+
+	// Check if wait parameter is present for long polling
+	waitParam := r.URL.Query().Get("wait")
+	if waitParam == "true" || waitParam == "1" {
+		h.CreateConversionWithWait(w, r)
 		return
 	}
 
@@ -94,6 +103,152 @@ func (h *Handler) CreateConversion(w http.ResponseWriter, r *http.Request) {
 	}
 
 	common.WriteJSON(w, http.StatusCreated, conversion)
+}
+
+// CreateConversionWithWait handles POST /convert?wait=true
+// This endpoint creates a conversion and waits (long polling) until it's completed
+func (h *Handler) CreateConversionWithWait(w http.ResponseWriter, r *http.Request) {
+	userID := common.GetUserIDFromContext(r.Context())
+	if userID == "" {
+		common.WriteError(w, http.StatusUnauthorized, "unauthorized", "user not authenticated", nil)
+		return
+	}
+
+	var req ConversionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		common.WriteError(w, http.StatusBadRequest, "invalid_request", "invalid request body", nil)
+		return
+	}
+
+	// Validate required fields
+	userImageID := req.GetUserImageID()
+	clothImageID := req.GetClothImageID()
+	
+	if userImageID == "" {
+		common.WriteError(w, http.StatusBadRequest, "invalid_request", "userImageId or user_image_id is required", nil)
+		return
+	}
+	if clothImageID == "" {
+		common.WriteError(w, http.StatusBadRequest, "invalid_request", "clothImageId or cloth_image_id is required", nil)
+		return
+	}
+
+	// Validate that user image and cloth image are different
+	if userImageID == clothImageID {
+		common.WriteError(w, http.StatusBadRequest, "invalid_request", "user image and cloth image must be different", nil)
+		return
+	}
+
+	// Create a normalized request
+	normalizedReq := ConversionRequest{
+		UserImageID:  userImageID,
+		ClothImageID: clothImageID,
+		StyleName:    req.GetStyleName(),
+	}
+
+	// Create conversion
+	conversion, err := h.service.CreateConversion(r.Context(), userID, normalizedReq)
+	if err != nil {
+		fmt.Printf("CreateConversionWithWait error: %v\n", err)
+		
+		if strings.Contains(err.Error(), "quota exceeded") {
+			common.WriteError(w, http.StatusForbidden, "quota_exceeded", "You have exceeded your free conversion limit. Please upgrade your plan to continue.", map[string]interface{}{
+				"remaining_free":   0,
+				"upgrade_required": true,
+				"upgrade_url":      "/plans",
+			})
+			return
+		}
+		if strings.Contains(err.Error(), "rate limit") {
+			common.WriteError(w, http.StatusTooManyRequests, "rate_limit_exceeded", err.Error(), nil)
+			return
+		}
+		if strings.Contains(err.Error(), "invalid") || strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "not accessible") || strings.Contains(err.Error(), "must be different") {
+			common.WriteError(w, http.StatusBadRequest, "invalid_request", err.Error(), nil)
+			return
+		}
+		common.WriteError(w, http.StatusInternalServerError, "server_error", "failed to create conversion", nil)
+		return
+	}
+
+	// Parse timeout and poll interval from query parameters
+	// This must be done before setting headers to ensure proper error handling
+	timeout := 5 * time.Minute // Default: 5 minutes
+	if timeoutStr := r.URL.Query().Get("timeout"); timeoutStr != "" {
+		if timeoutSeconds, err := strconv.Atoi(timeoutStr); err == nil && timeoutSeconds > 0 {
+			timeout = time.Duration(timeoutSeconds) * time.Second
+			// Maximum timeout: 30 minutes to prevent resource exhaustion
+			if timeout > 30*time.Minute {
+				timeout = 30 * time.Minute
+			}
+		}
+	}
+
+	pollInterval := 1 * time.Second // Default: 1 second
+	if intervalStr := r.URL.Query().Get("poll_interval"); intervalStr != "" {
+		if intervalMs, err := strconv.Atoi(intervalStr); err == nil && intervalMs > 0 {
+			pollInterval = time.Duration(intervalMs) * time.Millisecond
+			// Minimum 100ms, maximum 10 seconds
+			if pollInterval < 100*time.Millisecond {
+				pollInterval = 100 * time.Millisecond
+			}
+			if pollInterval > 10*time.Second {
+				pollInterval = 10 * time.Second
+			}
+		}
+	}
+
+	// Set headers for long polling BEFORE any writes
+	// This ensures headers are sent even if we return early
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no") // Disable nginx buffering for long polling
+	
+	// If conversion is already completed or failed, return immediately
+	if conversion.Status == ConversionStatusCompleted || conversion.Status == ConversionStatusFailed {
+		common.WriteJSON(w, http.StatusOK, conversion)
+		// Flush response to ensure it's sent immediately
+		if flusher, ok := w.(http.Flusher); ok {
+			flusher.Flush()
+		}
+		return
+	}
+
+	// Create context with timeout
+	ctx, cancel := context.WithTimeout(r.Context(), timeout)
+	defer cancel()
+
+	// Watch conversion until it's completed or timeout
+	finalConversion, err := h.service.WatchConversion(ctx, conversion.ID, userID, timeout, pollInterval)
+	if err != nil {
+		// If context was cancelled due to timeout, return current status (should not happen due to improved error handling)
+		if ctx.Err() == context.DeadlineExceeded {
+			// finalConversion should contain the last known status
+			if finalConversion.ID != "" {
+				common.WriteJSON(w, http.StatusOK, finalConversion)
+				if flusher, ok := w.(http.Flusher); ok {
+					flusher.Flush()
+				}
+				return
+			}
+		}
+		
+		fmt.Printf("WatchConversion error: %v\n", err)
+		if strings.Contains(err.Error(), "not found") {
+			common.WriteError(w, http.StatusNotFound, "not_found", "conversion not found", nil)
+			return
+		}
+		common.WriteError(w, http.StatusInternalServerError, "server_error", "failed to watch conversion", nil)
+		return
+	}
+
+	// Return final conversion status
+	common.WriteJSON(w, http.StatusOK, finalConversion)
+	// Flush response to ensure it's sent immediately
+	if flusher, ok := w.(http.Flusher); ok {
+		flusher.Flush()
+	}
 }
 
 // GetConversion handles GET /conversion/{id}
