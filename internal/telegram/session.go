@@ -46,7 +46,7 @@ func (sm *SessionManager) SetState(ctx context.Context, telegramUserID int64, ac
 	state := &UserState{
 		Action:    action,
 		Data:      stateData,
-		ExpiresAt: time.Now().Add(1 * time.Hour), // Default 1 hour TTL
+		ExpiresAt: time.Now().UTC().Add(1 * time.Hour), // Default 1 hour TTL (UTC)
 	}
 
 	return sm.storage.SetUserState(ctx, telegramUserID, state)

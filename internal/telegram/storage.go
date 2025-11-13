@@ -415,16 +415,23 @@ func (s *Storage) GetUserState(ctx context.Context, telegramUserID int64) (*User
 	
 	log.Printf("State retrieved from database for user %d: action=%s, data=%s, expiresAt=%v", telegramUserID, action, stateData, expiresAt)
 
-	// Check if expired
-	now := time.Now()
+	// Check if expired (use UTC for comparison)
+	now := time.Now().UTC()
+	// Ensure expiresAt is in UTC
+	if expiresAt.Location() != time.UTC {
+		expiresAt = expiresAt.UTC()
+	}
 	if now.After(expiresAt) {
-		log.Printf("State expired for user %d: now=%v, expiresAt=%v", telegramUserID, now, expiresAt)
+		log.Printf("State expired for user %d: now=%v (UTC), expiresAt=%v (UTC)", telegramUserID, now, expiresAt)
 		s.DeleteUserState(ctx, telegramUserID)
 		return nil, nil
 	}
-	log.Printf("State is valid for user %d: expiresAt=%v (not expired)", telegramUserID, expiresAt)
+	log.Printf("State is valid for user %d: expiresAt=%v (UTC), now=%v (UTC) (not expired)", telegramUserID, expiresAt, now)
 
-	// Create state object
+	// Create state object (ensure ExpiresAt is in UTC)
+	if expiresAt.Location() != time.UTC {
+		expiresAt = expiresAt.UTC()
+	}
 	state := &UserState{
 		Action:    action,
 		Data:      stateData,
