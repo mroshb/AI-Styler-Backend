@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"context"
+	"log"
 	"time"
 )
 
@@ -53,7 +54,17 @@ func (sm *SessionManager) SetState(ctx context.Context, telegramUserID int64, ac
 
 // GetState gets temporary user state
 func (sm *SessionManager) GetState(ctx context.Context, telegramUserID int64) (*UserState, error) {
-	return sm.storage.GetUserState(ctx, telegramUserID)
+	state, err := sm.storage.GetUserState(ctx, telegramUserID)
+	if err != nil {
+		log.Printf("GetState error for user %d: %v", telegramUserID, err)
+		return nil, err
+	}
+	if state == nil {
+		log.Printf("GetState returned nil for user %d", telegramUserID)
+	} else {
+		log.Printf("GetState returned state for user %d: action=%s, data=%s", telegramUserID, state.Action, state.Data)
+	}
+	return state, err
 }
 
 // ClearState clears temporary user state

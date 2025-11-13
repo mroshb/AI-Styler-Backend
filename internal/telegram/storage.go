@@ -413,13 +413,16 @@ func (s *Storage) GetUserState(ctx context.Context, telegramUserID int64) (*User
 		return nil, fmt.Errorf("failed to get state from database: %w", err)
 	}
 	
-	log.Printf("State retrieved from database for user %d: action=%s, data=%s", telegramUserID, action, stateData)
+	log.Printf("State retrieved from database for user %d: action=%s, data=%s, expiresAt=%v", telegramUserID, action, stateData, expiresAt)
 
 	// Check if expired
-	if time.Now().After(expiresAt) {
+	now := time.Now()
+	if now.After(expiresAt) {
+		log.Printf("State expired for user %d: now=%v, expiresAt=%v", telegramUserID, now, expiresAt)
 		s.DeleteUserState(ctx, telegramUserID)
 		return nil, nil
 	}
+	log.Printf("State is valid for user %d: expiresAt=%v (not expired)", telegramUserID, expiresAt)
 
 	// Create state object
 	state := &UserState{
