@@ -1,0 +1,203 @@
+version: '3.8'
+
+services:
+  # Telegram Bot Service
+  telegram-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.bot
+    container_name: ai-styler-telegram-bot
+    environment:
+      # Telegram Configuration
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - BOT_ENV=development
+
+      # Backend API Configuration
+      - API_BASE_URL=http://app:8080
+      - API_KEY_FOR_BOT=${API_KEY_FOR_BOT}
+      - API_TIMEOUT=30s
+      - API_RETRY_COUNT=3
+
+      # Database Configuration
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=styler_user
+      - DB_PASSWORD=styler_password
+      - DB_NAME=styler
+      - DB_SSLMODE=disable
+
+      # Redis Configuration
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - REDIS_DB=0
+
+      # Security Configuration
+      - MAX_UPLOAD_SIZE=10MB
+
+      # Server Configuration
+      - WEBHOOK_URL=${WEBHOOK_URL:-}
+      - WEBHOOK_PORT=8443
+      - HEALTH_PORT=8081
+
+      # Rate Limiting
+      - RATE_LIMIT_MESSAGES=10
+      - RATE_LIMIT_CONVERSIONS=5
+      - RATE_LIMIT_WINDOW=1m
+
+      # JWT Secret (should match backend)
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+    ports:
+      - "8081:8081"  # Health check port
+      - "8443:8443"  # Webhook port (if using webhook mode)
+    networks:
+      - ai-styler-network
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PostgreSQL Database (shared with main app)
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai-styler-postgres
+    environment:
+      POSTGRES_DB: styler
+      POSTGRES_USER: styler_user
+      POSTGRES_PASSWORD: styler_password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/migrations:/docker-entrypoint-initdb.d
+    networks:
+      - ai-styler-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U styler_user -d styler"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache (shared with main app)
+  redis:
+    image: redis:7-alpine
+    container_name: ai-styler-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - ai-styler-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Main Backend App (if running separately)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-styler-app
+    ports:
+      - "3000:8080"
+    environment:
+      # Database Configuration
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=styler_user
+      - DB_PASSWORD=styler_password
+      - DB_NAME=styler
+      - DB_SSLMODE=disable
+
+      # Redis Configuration
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - REDIS_DB=0
+
+      # Server Configuration
+      - HTTP_ADDR=:8080
+      - GIN_MODE=release
+
+      # JWT Configuration
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      - JWT_ACCESS_TTL=15m
+      - JWT_REFRESH_TTL=720h
+
+      # Storage Configuration
+      - STORAGE_PATH=/app/uploads
+      - UPLOAD_MAX_SIZE=10MB
+      - SIGNED_URL_TTL=1h
+
+      # Gemini AI Configuration
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_BASE_URL=https://generativelanguage.googleapis.com
+      - GEMINI_MODEL=gemini-pro-vision
+      - GEMINI_TIMEOUT=300
+      - GEMINI_MAX_RETRIES=3
+
+      # Monitoring Configuration
+      - ENVIRONMENT=development
+      - LOG_LEVEL=info
+      - HEALTH_ENABLED=true
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - SENTRY_DSN=${SENTRY_DSN}
+
+      # Security Configuration
+      - BCRYPT_COST=12
+      - ARGON2_MEMORY=65536
+      - ARGON2_ITERATIONS=3
+      - ARGON2_PARALLELISM=2
+
+      # Rate Limiting Configuration
+      - RATE_LIMIT_OTP_PER_PHONE=3
+      - RATE_LIMIT_OTP_PER_IP=100
+      - RATE_LIMIT_LOGIN_PER_PHONE=5
+      - RATE_LIMIT_LOGIN_PER_IP=10
+      - RATE_LIMIT_WINDOW=1h
+
+      # SMS Configuration
+      - SMS_PROVIDER=sms_ir
+      - SMS_API_KEY=${SMS_API_KEY}
+      - SMS_TEMPLATE_ID=100000
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    networks:
+      - ai-styler-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  ai-styler-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+

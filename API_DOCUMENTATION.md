@@ -75,6 +75,29 @@ POST /auth/verify-otp
 
 ---
 
+### Check User
+```
+POST /auth/check-user
+```
+
+**Request Body:**
+```json
+{
+  "phone": "+989123456789"
+}
+```
+
+**Response:**
+```json
+{
+  "registered": true
+}
+```
+
+توضیح: اگر شماره قبلاً به عنوان `user` یا `vendor` ثبت شده باشد مقدار `registered` برابر `true` خواهد بود.
+
+---
+
 ### Register
 ```
 POST /auth/register
