@@ -354,18 +354,21 @@ func (s *Service) GetConversionMetrics(ctx context.Context, userID, timeRange st
 // WatchConversion waits for a conversion to complete and returns the result
 // This function polls the conversion status until it's completed or failed
 // The ctx parameter should already have a timeout applied by the caller
-// pollInterval: interval between status checks (default: 1 second)
+// pollInterval: interval between status checks (default: 100ms)
 func (s *Service) WatchConversion(ctx context.Context, conversionID, userID string, timeout, pollInterval time.Duration) (ConversionResponse, error) {
-	// Set defaults for poll interval
+	// Set defaults for poll interval (faster for better responsiveness)
 	if pollInterval <= 0 {
-		pollInterval = 1 * time.Second
+		pollInterval = 100 * time.Millisecond
 	}
 
-	// Create ticker for polling
+	// Create ticker for polling - start immediately
 	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
 
-	// Initial check
+	// Store the last known conversion status
+	var lastKnownConversion ConversionResponse
+
+	// Initial check - but don't return immediately if pending, start polling right away
 	conversion, err := s.store.GetConversionWithDetails(ctx, conversionID)
 	if err != nil {
 		return ConversionResponse{}, fmt.Errorf("failed to get conversion: %w", err)
@@ -381,11 +384,22 @@ func (s *Service) WatchConversion(ctx context.Context, conversionID, userID stri
 		return conversion, nil
 	}
 
-	// Store the last known conversion status
-	lastKnownConversion := conversion
+	// Store last known status
+	lastKnownConversion = conversion
 
 	// Poll until completed or timeout
+	// We'll check immediately in the loop, no need to wait for first tick
 	for {
+		// Immediate check (before waiting for ticker) to catch rapid status changes
+		current, err := s.store.GetConversionWithDetails(ctx, conversionID)
+		if err == nil {
+			lastKnownConversion = current
+			// If status changed to completed or failed, return immediately
+			if current.Status == ConversionStatusCompleted || current.Status == ConversionStatusFailed {
+				return current, nil
+			}
+		}
+
 		select {
 		case <-ctx.Done():
 			// Timeout or context cancelled - return last known status
@@ -401,27 +415,36 @@ func (s *Service) WatchConversion(ctx context.Context, conversionID, userID stri
 					return current, nil
 				}
 				// If we can't get the latest status, return the last known status
-				return lastKnownConversion, nil
+				if lastKnownConversion.ID != "" {
+					return lastKnownConversion, nil
+				}
+				return ConversionResponse{}, fmt.Errorf("timeout waiting for conversion: %w", err)
 			}
 			// Context was cancelled for other reasons
+			if lastKnownConversion.ID != "" {
+				return lastKnownConversion, nil
+			}
 			return ConversionResponse{}, fmt.Errorf("context cancelled: %w", ctx.Err())
 
 		case <-ticker.C:
-			// Check status
+			// Check status again (this will be after the initial immediate check)
 			current, err := s.store.GetConversionWithDetails(ctx, conversionID)
 			if err != nil {
-				// If context is done, return the error from context
+				// If context is done, return last known status
 				if ctx.Err() != nil {
-					// Return last known status instead of error
-					return lastKnownConversion, nil
+					if lastKnownConversion.ID != "" {
+						return lastKnownConversion, nil
+					}
+					return ConversionResponse{}, fmt.Errorf("context error: %w", ctx.Err())
 				}
-				return ConversionResponse{}, fmt.Errorf("failed to get conversion: %w", err)
+				// If it's a temporary error, continue polling but keep last known status
+				continue
 			}
 
 			// Update last known conversion
 			lastKnownConversion = current
 
-			// If status changed to completed or failed, return
+			// If status changed to completed or failed, return immediately
 			if current.Status == ConversionStatusCompleted || current.Status == ConversionStatusFailed {
 				return current, nil
 			}

@@ -184,13 +184,13 @@ func (h *Handler) CreateConversionWithWait(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
-	pollInterval := 1 * time.Second // Default: 1 second
+	pollInterval := 100 * time.Millisecond // Default: 100ms (faster polling for real-time updates)
 	if intervalStr := r.URL.Query().Get("poll_interval"); intervalStr != "" {
 		if intervalMs, err := strconv.Atoi(intervalStr); err == nil && intervalMs > 0 {
 			pollInterval = time.Duration(intervalMs) * time.Millisecond
-			// Minimum 100ms, maximum 10 seconds
-			if pollInterval < 100*time.Millisecond {
-				pollInterval = 100 * time.Millisecond
+			// Minimum 50ms, maximum 10 seconds
+			if pollInterval < 50*time.Millisecond {
+				pollInterval = 50 * time.Millisecond
 			}
 			if pollInterval > 10*time.Second {
 				pollInterval = 10 * time.Second
@@ -219,7 +219,8 @@ func (h *Handler) CreateConversionWithWait(w http.ResponseWriter, r *http.Reques
 	ctx, cancel := context.WithTimeout(r.Context(), timeout)
 	defer cancel()
 
-	// Watch conversion until it's completed or timeout
+	// Immediately start watching - WatchConversion will do immediate checks
+	// No need for initial wait since WatchConversion has immediate first check
 	finalConversion, err := h.service.WatchConversion(ctx, conversion.ID, userID, timeout, pollInterval)
 	if err != nil {
 		// If context was cancelled due to timeout, return current status (should not happen due to improved error handling)

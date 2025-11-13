@@ -467,13 +467,28 @@ func (h *Handlers) handlePhoto(msg *tgbotapi.Message) {
 
 	// Get state to determine image type
 	// First image is user photo, second image is cloth/garment
-	state, _ := h.sessionMgr.GetState(ctx, userID)
-	imageType := "user" // Default: user photo
-	if state != nil && state.Action == "waiting_cloth_image" {
-		// Second image is the cloth/garment - also use "user" type as it belongs to the user
-		// The backend API expects userImageId and clothImageId, both can be "user" type images
-		imageType = "user"
+	state, err := h.sessionMgr.GetState(ctx, userID)
+	if err != nil {
+		log.Printf("Failed to get state: %v", err)
+		h.sendMessage(chatID, MsgErrorGeneric)
+		return
 	}
+	
+	log.Printf("Current state: action=%s, data=%s", 
+		func() string {
+			if state == nil {
+				return "nil"
+			}
+			return state.Action
+		}(),
+		func() string {
+			if state == nil {
+				return "nil"
+			}
+			return state.Data
+		}())
+	
+	imageType := "user" // Default: user photo
 
 	// Upload to backend
 	uploadResp, err := h.apiClient.UploadImage(ctx, accessToken, fileData, file.FilePath, mimeType, imageType)
@@ -483,18 +498,32 @@ func (h *Handlers) handlePhoto(msg *tgbotapi.Message) {
 		return
 	}
 
+	log.Printf("Image uploaded successfully: ID=%s", uploadResp.ID)
 	h.sendMessage(chatID, fmt.Sprintf(MsgImageUploaded, uploadResp.ID))
 
 	// Update state based on image type
-	if state == nil || state.Action == "waiting_user_image" {
-		// Store user image ID and request cloth image
+	if state == nil || state.Action == "waiting_user_image" || state.Action == "" {
+		// First image: Store user image ID and request cloth image
+		log.Printf("First image received, setting state to waiting_cloth_image with userImageID=%s", uploadResp.ID)
 		h.sessionMgr.SetState(ctx, userID, "waiting_cloth_image", uploadResp.ID)
 		h.sendMessage(chatID, MsgImageReceived)
 	} else if state.Action == "waiting_cloth_image" {
-		// Store cloth image ID and show style selection
+		// Second image: Store cloth image ID and show style selection
 		userImageID := state.Data
+		if userImageID == "" {
+			log.Printf("Warning: userImageID is empty in state data")
+			h.sendMessage(chatID, "❌ خطا در دریافت اطلاعات. لطفاً دوباره از ابتدا شروع کنید.")
+			h.sessionMgr.ClearState(ctx, userID)
+			return
+		}
+		log.Printf("Second image received, userImageID=%s, clothImageID=%s", userImageID, uploadResp.ID)
 		h.sessionMgr.SetState(ctx, userID, "waiting_style", userImageID+":"+uploadResp.ID)
 		h.sendMessageWithKeyboard(chatID, MsgSelectStyle, StyleSelectionKeyboard())
+	} else {
+		// Unexpected state
+		log.Printf("Unexpected state: %s, clearing state", state.Action)
+		h.sendMessage(chatID, "❌ وضعیت نامعتبر. لطفاً دوباره از ابتدا شروع کنید.")
+		h.sessionMgr.ClearState(ctx, userID)
 	}
 }
 

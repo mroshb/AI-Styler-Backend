@@ -139,6 +139,22 @@ func (s *Storage) createTables() error {
 		}
 	}
 
+	// Create telegram_user_states table for state management (fallback when Redis is unavailable)
+	createStateTableQuery := `
+	CREATE TABLE IF NOT EXISTS telegram_user_states (
+		telegram_user_id BIGINT PRIMARY KEY,
+		action VARCHAR(100) NOT NULL,
+		data TEXT,
+		expires_at TIMESTAMP NOT NULL,
+		created_at TIMESTAMP DEFAULT NOW(),
+		updated_at TIMESTAMP DEFAULT NOW()
+	);
+	`
+
+	if _, err := s.db.Exec(createStateTableQuery); err != nil {
+		return fmt.Errorf("failed to create telegram_user_states table: %w", err)
+	}
+
 	// Create indexes
 	indexQueries := []string{
 		`CREATE INDEX IF NOT EXISTS idx_telegram_sessions_telegram_user_id ON telegram_sessions(telegram_user_id);`,
@@ -304,63 +320,121 @@ func (s *Storage) GetSessionByTelegramID(ctx context.Context, telegramUserID int
 	return &session, nil
 }
 
-// SetUserState stores temporary user state in Redis
+// SetUserState stores temporary user state in Redis (with database fallback)
+// Uses write-through cache: writes to both Redis and database for reliability
 func (s *Storage) SetUserState(ctx context.Context, telegramUserID int64, state *UserState) error {
-	if s.redis == nil {
-		return fmt.Errorf("redis client not available")
-	}
-
-	key := fmt.Sprintf("telegram:state:%d", telegramUserID)
 	data, err := json.Marshal(state)
 	if err != nil {
 		return fmt.Errorf("failed to marshal state: %w", err)
 	}
 
-	ttl := time.Until(state.ExpiresAt)
-	if ttl <= 0 {
-		ttl = 1 * time.Hour // Default TTL
+	// Always write to database first for reliability
+	query := `
+		INSERT INTO telegram_user_states (telegram_user_id, action, data, expires_at)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (telegram_user_id) 
+		DO UPDATE SET action = $2, data = $3, expires_at = $4, updated_at = NOW()
+	`
+	_, err = s.db.ExecContext(ctx, query, telegramUserID, state.Action, string(data), state.ExpiresAt)
+	if err != nil {
+		return fmt.Errorf("failed to store state in database: %w", err)
 	}
 
-	return s.redis.Set(ctx, key, data, ttl).Err()
+	// Also write to Redis if available (for faster access)
+	if s.redis != nil {
+		key := fmt.Sprintf("telegram:state:%d", telegramUserID)
+		ttl := time.Until(state.ExpiresAt)
+		if ttl <= 0 {
+			ttl = 1 * time.Hour // Default TTL
+		}
+
+		// Ignore Redis errors - database is the source of truth
+		_ = s.redis.Set(ctx, key, data, ttl).Err()
+	}
+
+	return nil
 }
 
-// GetUserState retrieves temporary user state from Redis
+// GetUserState retrieves temporary user state from Redis (with database fallback)
 func (s *Storage) GetUserState(ctx context.Context, telegramUserID int64) (*UserState, error) {
-	if s.redis == nil {
-		return nil, fmt.Errorf("redis client not available")
+	// Try Redis first
+	if s.redis != nil {
+		key := fmt.Sprintf("telegram:state:%d", telegramUserID)
+		data, err := s.redis.Get(ctx, key).Result()
+		if err == nil {
+			var state UserState
+			if err := json.Unmarshal([]byte(data), &state); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal state: %w", err)
+			}
+
+			// Check if expired
+			if time.Now().After(state.ExpiresAt) {
+				// Delete expired state from both Redis and database
+				s.DeleteUserState(ctx, telegramUserID)
+				return nil, nil
+			}
+
+			return &state, nil
+		}
+		// If Redis fails or key not found, fall back to database
 	}
 
-	key := fmt.Sprintf("telegram:state:%d", telegramUserID)
-	data, err := s.redis.Get(ctx, key).Result()
-	if err == redis.Nil {
+	// Fallback to database
+	query := `
+		SELECT action, data, expires_at
+		FROM telegram_user_states
+		WHERE telegram_user_id = $1
+	`
+	var action, stateData string
+	var expiresAt time.Time
+	err := s.db.QueryRowContext(ctx, query, telegramUserID).Scan(&action, &stateData, &expiresAt)
+	if err == sql.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to get state: %w", err)
-	}
-
-	var state UserState
-	if err := json.Unmarshal([]byte(data), &state); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal state: %w", err)
+		return nil, fmt.Errorf("failed to get state from database: %w", err)
 	}
 
 	// Check if expired
-	if time.Now().After(state.ExpiresAt) {
+	if time.Now().After(expiresAt) {
 		s.DeleteUserState(ctx, telegramUserID)
 		return nil, nil
+	}
+
+	// Unmarshal state data
+	var state UserState
+	state.Action = action
+	state.Data = stateData
+	state.ExpiresAt = expiresAt
+
+	// Cache in Redis for faster access next time (if available)
+	if s.redis != nil {
+		key := fmt.Sprintf("telegram:state:%d", telegramUserID)
+		data, err := json.Marshal(&state)
+		if err == nil {
+			ttl := time.Until(state.ExpiresAt)
+			if ttl > 0 {
+				// Ignore Redis errors - database is the source of truth
+				_ = s.redis.Set(ctx, key, data, ttl).Err()
+			}
+		}
 	}
 
 	return &state, nil
 }
 
-// DeleteUserState deletes temporary user state from Redis
+// DeleteUserState deletes temporary user state from Redis and database
 func (s *Storage) DeleteUserState(ctx context.Context, telegramUserID int64) error {
-	if s.redis == nil {
-		return nil
+	// Delete from Redis if available
+	if s.redis != nil {
+		key := fmt.Sprintf("telegram:state:%d", telegramUserID)
+		s.redis.Del(ctx, key) // Ignore error
 	}
 
-	key := fmt.Sprintf("telegram:state:%d", telegramUserID)
-	return s.redis.Del(ctx, key).Err()
+	// Delete from database
+	query := `DELETE FROM telegram_user_states WHERE telegram_user_id = $1`
+	_, err := s.db.ExecContext(ctx, query, telegramUserID)
+	return err
 }
 
 // StoreToken stores JWT token in Redis with TTL
