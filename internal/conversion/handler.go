@@ -117,6 +117,7 @@ func (h *Handler) CreateConversionImmediate(w http.ResponseWriter, r *http.Reque
 // CreateConversionWithWait handles POST /convert
 // This endpoint creates a conversion and waits (long polling) until it's completed
 // It always returns the full conversion result with status, resultImageId, and all details
+// For testing: use ?mock=true to return a mock response without actual AI processing
 func (h *Handler) CreateConversionWithWait(w http.ResponseWriter, r *http.Request) {
 	userID := common.GetUserIDFromContext(r.Context())
 	if userID == "" {
@@ -146,6 +147,12 @@ func (h *Handler) CreateConversionWithWait(w http.ResponseWriter, r *http.Reques
 	// Validate that user image and cloth image are different
 	if userImageID == clothImageID {
 		common.WriteError(w, http.StatusBadRequest, "invalid_request", "user image and cloth image must be different", nil)
+		return
+	}
+
+	// Check if mock mode is enabled
+	if r.URL.Query().Get("mock") == "true" {
+		h.returnMockConversion(w, userID, userImageID, clothImageID)
 		return
 	}
 
@@ -503,6 +510,45 @@ func (h *Handler) GetConversionMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 // Helper functions - now using common package
+
+// returnMockConversion returns a mock conversion response for testing
+// This bypasses actual AI processing and returns a fixed successful response
+func (h *Handler) returnMockConversion(w http.ResponseWriter, userID, userImageID, clothImageID string) {
+	now := time.Now()
+
+	// Generate mock IDs based on input IDs (safe substring)
+	getShortID := func(id string) string {
+		if len(id) > 8 {
+			return id[:8]
+		}
+		return id
+	}
+
+	resultImageID := "mock-result-" + getShortID(userImageID) + "-" + getShortID(clothImageID)
+	conversionID := "mock-conv-" + getShortID(userID) + "-" + fmt.Sprintf("%d", now.Unix())
+	processingTimeMs := 2500
+	completedAt := now.Add(2 * time.Second)
+
+	mockResponse := ConversionResponse{
+		ID:               conversionID,
+		UserID:           userID,
+		UserImageID:      userImageID,
+		ClothImageID:     clothImageID,
+		Status:           ConversionStatusCompleted,
+		ResultImageID:    &resultImageID,
+		ErrorMessage:     nil,
+		ProcessingTimeMs: &processingTimeMs,
+		CreatedAt:        now,
+		UpdatedAt:        completedAt,
+		CompletedAt:      &completedAt,
+		UserImageURL:     "",
+		ClothImageURL:    "",
+		ResultImageURL:   "",
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	common.WriteJSON(w, http.StatusOK, mockResponse)
+}
 
 // getPathParam extracts a path parameter from the request
 // First tries to get it from context (set by GinWrap), then falls back to parsing the URL

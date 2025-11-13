@@ -244,6 +244,7 @@ Headers: Authorization: Bearer {access_token}
 این endpoint کانورژن را ایجاد می‌کند و منتظر می‌ماند تا پردازش کامل شود (long polling). سپس نتیجه کامل کانورژن را برمی‌گرداند.
 
 **Query Parameters (اختیاری):**
+- `mock` (optional): اگر `true` باشد، یک پاسخ mock برگردانده می‌شود بدون استفاده از سرویس AI (برای تست)
 - `timeout` (optional): حداکثر زمان انتظار به ثانیه (پیش‌فرض: 300 ثانیه، حداکثر: 1800 ثانیه)
 - `poll_interval` (optional): فاصله بررسی وضعیت به میلی‌ثانیه (پیش‌فرض: 25ms، حداقل: 10ms، حداکثر: 10000ms)
 
@@ -284,6 +285,15 @@ Headers: Authorization: Bearer {access_token}
 - در صورت خطا، `status` برابر `failed` و `errorMessage` شامل پیام خطا است
 - فیلدهای `userImageUrl`, `clothImageUrl`, `resultImageUrl` در صورت وجود URL تصویر نمایش داده می‌شوند
 - `status` می‌تواند یکی از مقادیر زیر باشد: `pending`, `processing`, `completed`, `failed`
+
+**حالت Mock (برای تست):**
+برای تست بدون استفاده از سرویس AI واقعی، می‌توانید از query parameter `mock=true` استفاده کنید:
+
+```
+POST /api/convert?mock=true
+```
+
+در این حالت، endpoint فوراً یک پاسخ mock موفق برمی‌گرداند بدون اینکه واقعاً کانورژن را پردازش کند. این برای تست و توسعه مفید است.
 
 ---
 
