@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/go-redis/redis/v8"
@@ -151,9 +152,12 @@ func (s *Storage) createTables() error {
 	);
 	`
 
+	log.Printf("Creating telegram_user_states table...")
 	if _, err := s.db.Exec(createStateTableQuery); err != nil {
+		log.Printf("Failed to create telegram_user_states table: %v", err)
 		return fmt.Errorf("failed to create telegram_user_states table: %w", err)
 	}
+	log.Printf("telegram_user_states table created successfully")
 
 	// Create indexes
 	indexQueries := []string{
@@ -323,11 +327,11 @@ func (s *Storage) GetSessionByTelegramID(ctx context.Context, telegramUserID int
 // SetUserState stores temporary user state in Redis (with database fallback)
 // Uses write-through cache: writes to both Redis and database for reliability
 func (s *Storage) SetUserState(ctx context.Context, telegramUserID int64, state *UserState) error {
-	data, err := json.Marshal(state)
-	if err != nil {
-		return fmt.Errorf("failed to marshal state: %w", err)
-	}
-
+	// For database, store action and data separately (data is already a string)
+	// For Redis, store the full state as JSON
+	
+	log.Printf("Setting state for user %d: action=%s, data=%s", telegramUserID, state.Action, state.Data)
+	
 	// Always write to database first for reliability
 	query := `
 		INSERT INTO telegram_user_states (telegram_user_id, action, data, expires_at)
@@ -335,12 +339,18 @@ func (s *Storage) SetUserState(ctx context.Context, telegramUserID int64, state 
 		ON CONFLICT (telegram_user_id) 
 		DO UPDATE SET action = $2, data = $3, expires_at = $4, updated_at = NOW()
 	`
-	_, err = s.db.ExecContext(ctx, query, telegramUserID, state.Action, string(data), state.ExpiresAt)
+	
+	result, err := s.db.ExecContext(ctx, query, telegramUserID, state.Action, state.Data, state.ExpiresAt)
 	if err != nil {
+		log.Printf("Failed to store state in database: %v", err)
 		return fmt.Errorf("failed to store state in database: %w", err)
 	}
+	
+	rowsAffected, _ := result.RowsAffected()
+	log.Printf("State stored in database: rowsAffected=%d, action=%s, data=%s", rowsAffected, state.Action, state.Data)
 
 	// Also write to Redis if available (for faster access)
+	// Store full state as JSON in Redis
 	if s.redis != nil {
 		key := fmt.Sprintf("telegram:state:%d", telegramUserID)
 		ttl := time.Until(state.ExpiresAt)
@@ -348,8 +358,12 @@ func (s *Storage) SetUserState(ctx context.Context, telegramUserID int64, state 
 			ttl = 1 * time.Hour // Default TTL
 		}
 
-		// Ignore Redis errors - database is the source of truth
-		_ = s.redis.Set(ctx, key, data, ttl).Err()
+		// Marshal full state for Redis
+		redisData, err := json.Marshal(state)
+		if err == nil {
+			// Ignore Redis errors - database is the source of truth
+			_ = s.redis.Set(ctx, key, redisData, ttl).Err()
+		}
 	}
 
 	return nil
@@ -374,9 +388,11 @@ func (s *Storage) GetUserState(ctx context.Context, telegramUserID int64) (*User
 				return nil, nil
 			}
 
+			log.Printf("State retrieved from Redis for user %d: action=%s, data=%s", telegramUserID, state.Action, state.Data)
 			return &state, nil
 		}
 		// If Redis fails or key not found, fall back to database
+		log.Printf("Redis state not found for user %d, falling back to database", telegramUserID)
 	}
 
 	// Fallback to database
@@ -389,11 +405,15 @@ func (s *Storage) GetUserState(ctx context.Context, telegramUserID int64) (*User
 	var expiresAt time.Time
 	err := s.db.QueryRowContext(ctx, query, telegramUserID).Scan(&action, &stateData, &expiresAt)
 	if err == sql.ErrNoRows {
+		log.Printf("No state found in database for user %d", telegramUserID)
 		return nil, nil
 	}
 	if err != nil {
+		log.Printf("Failed to get state from database for user %d: %v", telegramUserID, err)
 		return nil, fmt.Errorf("failed to get state from database: %w", err)
 	}
+	
+	log.Printf("State retrieved from database for user %d: action=%s, data=%s", telegramUserID, action, stateData)
 
 	// Check if expired
 	if time.Now().After(expiresAt) {

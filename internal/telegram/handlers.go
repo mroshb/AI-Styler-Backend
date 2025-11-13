@@ -505,7 +505,25 @@ func (h *Handlers) handlePhoto(msg *tgbotapi.Message) {
 	if state == nil || state.Action == "waiting_user_image" || state.Action == "" {
 		// First image: Store user image ID and request cloth image
 		log.Printf("First image received, setting state to waiting_cloth_image with userImageID=%s", uploadResp.ID)
-		h.sessionMgr.SetState(ctx, userID, "waiting_cloth_image", uploadResp.ID)
+		if err := h.sessionMgr.SetState(ctx, userID, "waiting_cloth_image", uploadResp.ID); err != nil {
+			log.Printf("Failed to set state: %v", err)
+			h.sendMessage(chatID, "❌ خطا در ذخیره وضعیت. لطفاً دوباره تلاش کنید.")
+			return
+		}
+		// Verify state was saved (with small delay to ensure database commit)
+		time.Sleep(100 * time.Millisecond)
+		verifyState, verifyErr := h.sessionMgr.GetState(ctx, userID)
+		if verifyErr != nil {
+			log.Printf("Error verifying state: %v", verifyErr)
+		} else if verifyState == nil || verifyState.Action != "waiting_cloth_image" {
+			log.Printf("Warning: State verification failed after set. Expected: waiting_cloth_image, Got: %v", verifyState)
+			// Try to set again
+			if retryErr := h.sessionMgr.SetState(ctx, userID, "waiting_cloth_image", uploadResp.ID); retryErr != nil {
+				log.Printf("Failed to retry setting state: %v", retryErr)
+			}
+		} else {
+			log.Printf("State verified successfully: action=%s, data=%s", verifyState.Action, verifyState.Data)
+		}
 		h.sendMessage(chatID, MsgImageReceived)
 	} else if state.Action == "waiting_cloth_image" {
 		// Second image: Store cloth image ID and show style selection
@@ -517,7 +535,11 @@ func (h *Handlers) handlePhoto(msg *tgbotapi.Message) {
 			return
 		}
 		log.Printf("Second image received, userImageID=%s, clothImageID=%s", userImageID, uploadResp.ID)
-		h.sessionMgr.SetState(ctx, userID, "waiting_style", userImageID+":"+uploadResp.ID)
+		if err := h.sessionMgr.SetState(ctx, userID, "waiting_style", userImageID+":"+uploadResp.ID); err != nil {
+			log.Printf("Failed to set state: %v", err)
+			h.sendMessage(chatID, "❌ خطا در ذخیره وضعیت. لطفاً دوباره تلاش کنید.")
+			return
+		}
 		h.sendMessageWithKeyboard(chatID, MsgSelectStyle, StyleSelectionKeyboard())
 	} else {
 		// Unexpected state

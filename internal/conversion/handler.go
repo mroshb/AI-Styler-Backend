@@ -184,13 +184,13 @@ func (h *Handler) CreateConversionWithWait(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
-	pollInterval := 100 * time.Millisecond // Default: 100ms (faster polling for real-time updates)
+	pollInterval := 25 * time.Millisecond // Default: 25ms (very fast polling for immediate updates)
 	if intervalStr := r.URL.Query().Get("poll_interval"); intervalStr != "" {
 		if intervalMs, err := strconv.Atoi(intervalStr); err == nil && intervalMs > 0 {
 			pollInterval = time.Duration(intervalMs) * time.Millisecond
-			// Minimum 50ms, maximum 10 seconds
-			if pollInterval < 50*time.Millisecond {
-				pollInterval = 50 * time.Millisecond
+			// Minimum 10ms, maximum 10 seconds
+			if pollInterval < 10*time.Millisecond {
+				pollInterval = 10 * time.Millisecond
 			}
 			if pollInterval > 10*time.Second {
 				pollInterval = 10 * time.Second
@@ -219,8 +219,21 @@ func (h *Handler) CreateConversionWithWait(w http.ResponseWriter, r *http.Reques
 	ctx, cancel := context.WithTimeout(r.Context(), timeout)
 	defer cancel()
 
-	// Immediately start watching - WatchConversion will do immediate checks
-	// No need for initial wait since WatchConversion has immediate first check
+	// Give worker a tiny moment to process (especially if it's very fast)
+	// But also check immediately before starting the watch loop
+	time.Sleep(10 * time.Millisecond)
+	
+	// Quick check before starting watch loop - worker might have already finished
+	quickCheck, err := h.service.GetConversion(ctx, conversion.ID, userID)
+	if err == nil && (quickCheck.Status == ConversionStatusCompleted || quickCheck.Status == ConversionStatusFailed) {
+		common.WriteJSON(w, http.StatusOK, quickCheck)
+		if flusher, ok := w.(http.Flusher); ok {
+			flusher.Flush()
+		}
+		return
+	}
+
+	// Start watching - WatchConversion will do immediate checks in a tight loop
 	finalConversion, err := h.service.WatchConversion(ctx, conversion.ID, userID, timeout, pollInterval)
 	if err != nil {
 		// If context was cancelled due to timeout, return current status (should not happen due to improved error handling)
