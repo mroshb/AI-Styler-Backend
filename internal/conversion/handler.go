@@ -152,7 +152,7 @@ func (h *Handler) CreateConversionWithWait(w http.ResponseWriter, r *http.Reques
 
 	// Check if mock mode is enabled
 	if r.URL.Query().Get("mock") == "true" {
-		h.returnMockConversion(w, userID, userImageID, clothImageID)
+		h.returnMockConversion(w, r, userID, userImageID, clothImageID)
 		return
 	}
 
@@ -513,7 +513,7 @@ func (h *Handler) GetConversionMetrics(w http.ResponseWriter, r *http.Request) {
 
 // returnMockConversion returns a mock conversion response for testing
 // This bypasses actual AI processing and returns a fixed successful response
-func (h *Handler) returnMockConversion(w http.ResponseWriter, userID, userImageID, clothImageID string) {
+func (h *Handler) returnMockConversion(w http.ResponseWriter, r *http.Request, userID, userImageID, clothImageID string) {
 	now := time.Now()
 
 	// Generate mock IDs based on input IDs (safe substring)
@@ -529,6 +529,31 @@ func (h *Handler) returnMockConversion(w http.ResponseWriter, userID, userImageI
 	processingTimeMs := 2500
 	completedAt := now.Add(2 * time.Second)
 
+	// Generate base URL from request
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	// Check X-Forwarded-Proto header for reverse proxy scenarios
+	if proto := r.Header.Get("X-Forwarded-Proto"); proto != "" {
+		scheme = proto
+	}
+	host := r.Host
+	if host == "" {
+		host = "localhost:8080"
+	}
+	// Check X-Forwarded-Host header for reverse proxy scenarios
+	if forwardedHost := r.Header.Get("X-Forwarded-Host"); forwardedHost != "" {
+		host = forwardedHost
+	}
+	baseURL := fmt.Sprintf("%s://%s", scheme, host)
+
+	// Generate mock image URLs (direct image URLs for mock mode)
+	// In production, these would be signed URLs or direct storage URLs
+	userImageURL := fmt.Sprintf("%s/api/images/%s", baseURL, userImageID)
+	clothImageURL := fmt.Sprintf("%s/api/images/%s", baseURL, clothImageID)
+	resultImageURL := fmt.Sprintf("%s/api/images/%s", baseURL, resultImageID)
+
 	mockResponse := ConversionResponse{
 		ID:               conversionID,
 		UserID:           userID,
@@ -541,9 +566,9 @@ func (h *Handler) returnMockConversion(w http.ResponseWriter, userID, userImageI
 		CreatedAt:        now,
 		UpdatedAt:        completedAt,
 		CompletedAt:      &completedAt,
-		UserImageURL:     "",
-		ClothImageURL:    "",
-		ResultImageURL:   "",
+		UserImageURL:     userImageURL,
+		ClothImageURL:    clothImageURL,
+		ResultImageURL:   resultImageURL,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
