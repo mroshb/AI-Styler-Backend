@@ -3,7 +3,15 @@
 # Bot targets
 bot-run:
 	@echo "Running Telegram bot..."
-	@go run cmd/bot/main.go
+	@if [ ! -f .env.bot ]; then \
+		echo "❌ .env.bot file not found!"; \
+		echo "Creating from example..."; \
+		cp configs/example.env .env.bot 2>/dev/null || true; \
+		echo "⚠️  Please edit .env.bot and set your TELEGRAM_BOT_TOKEN"; \
+		exit 1; \
+	fi
+	@echo "Loading environment variables from .env.bot..."
+	@export $$(cat .env.bot | grep -v '^#' | xargs) && go run cmd/bot/main.go
 
 bot-test:
 	@echo "Running bot tests..."
