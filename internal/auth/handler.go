@@ -93,12 +93,14 @@ type sendOtpResp struct {
 func (h *Handler) SendOTP(w http.ResponseWriter, r *http.Request) {
 	var req sendOtpReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("SendOTP: JSON decode error: %v", err)
 		common.WriteError(w, http.StatusBadRequest, "bad_request", "invalid json", nil)
 		return
 	}
 	phone := normalizePhone(req.Phone)
 	if phone == "" {
-		common.WriteError(w, http.StatusBadRequest, "bad_request", "invalid phone", nil)
+		log.Printf("SendOTP: Invalid phone - original: %q, normalized: %q", req.Phone, phone)
+		common.WriteError(w, http.StatusBadRequest, "bad_request", "invalid phone number", nil)
 		return
 	}
 	ip := clientIP(r)
@@ -148,12 +150,19 @@ type checkUserResp struct {
 func (h *Handler) VerifyOTP(w http.ResponseWriter, r *http.Request) {
 	var req verifyReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("VerifyOTP: JSON decode error: %v", err)
 		common.WriteError(w, http.StatusBadRequest, "bad_request", "invalid json", nil)
 		return
 	}
 	phone := normalizePhone(req.Phone)
-	if phone == "" || len(req.Code) != 6 {
-		common.WriteError(w, http.StatusBadRequest, "bad_request", "invalid input", nil)
+	if phone == "" {
+		log.Printf("VerifyOTP: Invalid phone - original: %q, normalized: %q", req.Phone, phone)
+		common.WriteError(w, http.StatusBadRequest, "bad_request", "invalid phone number", nil)
+		return
+	}
+	if len(req.Code) != 6 {
+		log.Printf("VerifyOTP: Invalid code length - provided: %d, expected: 6", len(req.Code))
+		common.WriteError(w, http.StatusBadRequest, "bad_request", "OTP code must be exactly 6 digits", nil)
 		return
 	}
 	ok, err := h.store.VerifyOTP(r.Context(), phone, req.Code, "phone_verify")
@@ -176,13 +185,15 @@ func (h *Handler) VerifyOTP(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) CheckUser(w http.ResponseWriter, r *http.Request) {
 	var req checkUserReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("CheckUser: JSON decode error: %v", err)
 		common.WriteError(w, http.StatusBadRequest, "bad_request", "invalid json", nil)
 		return
 	}
 
 	phone := normalizePhone(req.Phone)
 	if phone == "" {
-		common.WriteError(w, http.StatusBadRequest, "bad_request", "invalid phone", nil)
+		log.Printf("CheckUser: Invalid phone - original: %q, normalized: %q", req.Phone, phone)
+		common.WriteError(w, http.StatusBadRequest, "bad_request", "invalid phone number", nil)
 		return
 	}
 
@@ -289,12 +300,19 @@ type loginResp struct {
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var req loginReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("Login: JSON decode error: %v", err)
 		common.WriteError(w, http.StatusBadRequest, "bad_request", "invalid json", nil)
 		return
 	}
 	phone := normalizePhone(req.Phone)
-	if phone == "" || len(req.Password) == 0 {
-		common.WriteError(w, http.StatusBadRequest, "bad_request", "invalid input", nil)
+	if phone == "" {
+		log.Printf("Login: Invalid phone - original: %q, normalized: %q", req.Phone, phone)
+		common.WriteError(w, http.StatusBadRequest, "bad_request", "invalid phone number", nil)
+		return
+	}
+	if len(req.Password) == 0 {
+		log.Printf("Login: Password is empty")
+		common.WriteError(w, http.StatusBadRequest, "bad_request", "password is required", nil)
 		return
 	}
 	user, err := h.store.GetUserByPhone(r.Context(), phone)
