@@ -15,9 +15,9 @@ import (
 
 // APIClient handles communication with the backend API
 type APIClient struct {
-	baseURL     string
-	apiKey      string
-	httpClient  *http.Client
+	baseURL        string
+	apiKey         string
+	httpClient     *http.Client
 	circuitBreaker *gobreaker.CircuitBreaker
 }
 
@@ -143,9 +143,9 @@ type ImageUploadResponse struct {
 
 // ConversionRequest represents conversion creation request
 type ConversionRequest struct {
-	UserImageID string `json:"userImageId"`
+	UserImageID  string `json:"userImageId"`
 	ClothImageID string `json:"clothImageId"`
-	StyleName   string `json:"styleName,omitempty"`
+	StyleName    string `json:"styleName,omitempty"`
 }
 
 // ConversionResponse represents conversion response
@@ -192,6 +192,7 @@ func (c *APIClient) doRequest(ctx context.Context, method, endpoint string, body
 
 	// Set default headers
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Request-Source", "telegram-bot") // Always identify as Telegram bot
 	if c.apiKey != "" {
 		req.Header.Set("X-API-Key", c.apiKey)
 	}
@@ -394,6 +395,7 @@ func (c *APIClient) UploadImage(ctx context.Context, accessToken string, fileDat
 
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("X-Request-Source", "telegram-bot") // Always identify as Telegram bot
 	if c.apiKey != "" {
 		req.Header.Set("X-API-Key", c.apiKey)
 	}
@@ -507,8 +509,8 @@ func (c *APIClient) GetImageURL(ctx context.Context, accessToken, imageID string
 
 	// Backend returns Image struct with originalUrl field
 	var result struct {
-		ID          string `json:"id"`
-		OriginalURL string `json:"originalUrl"`
+		ID           string  `json:"id"`
+		OriginalURL  string  `json:"originalUrl"`
 		ThumbnailURL *string `json:"thumbnailUrl,omitempty"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
@@ -529,4 +531,3 @@ func (c *APIClient) GetImageURL(ctx context.Context, accessToken, imageID string
 
 	return "", fmt.Errorf("no URL found in image response")
 }
-

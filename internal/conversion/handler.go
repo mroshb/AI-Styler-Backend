@@ -47,6 +47,12 @@ func (h *Handler) CreateConversion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate that user image and cloth image are different
+	if userImageID == clothImageID {
+		common.WriteError(w, http.StatusBadRequest, "invalid_request", "user image and cloth image must be different", nil)
+		return
+	}
+
 	// Create a normalized request with the extracted values
 	normalizedReq := ConversionRequest{
 		UserImageID:  userImageID,
@@ -69,6 +75,10 @@ func (h *Handler) CreateConversion(w http.ResponseWriter, r *http.Request) {
 		}
 		if strings.Contains(err.Error(), "rate limit") {
 			common.WriteError(w, http.StatusTooManyRequests, "rate_limit_exceeded", err.Error(), nil)
+			return
+		}
+		if strings.Contains(err.Error(), "access denied") {
+			common.WriteError(w, http.StatusForbidden, "access_denied", "You do not have permission to access one or more of the specified images", nil)
 			return
 		}
 		if strings.Contains(err.Error(), "invalid") || strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "not accessible") || strings.Contains(err.Error(), "must be different") {

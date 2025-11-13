@@ -222,20 +222,26 @@ func (h *Handlers) handleContact(msg *tgbotapi.Message) {
 	}
 
 	if userExists {
-		// User exists - auto login (no password needed for Telegram auth)
-		// For Telegram bot, we'll use a special login method or auto-generate password
+		// User exists - try to login with default password first
+		// This works for users who registered via Telegram bot
 		defaultPassword := generateDefaultPassword(phone)
 		loginResp, err := h.apiClient.Login(ctx, phone, defaultPassword)
+		
 		if err != nil {
-			// If login fails, user might have changed password
-			// For Telegram bot, we'll create a new session with phone verification
-			log.Printf("Auto-login failed, trying to register or use phone-only auth: %v", err)
-			h.sendMessage(chatID, "⚠️ برای ورود، لطفاً از طریق وب‌سایت یا اپلیکیشن وارد شوید و رمز عبور خود را تنظیم کنید.")
+			// Login failed - user might have changed password
+			// For Telegram bot users, we need to handle this gracefully
+			log.Printf("Auto-login failed for user %s: %v", phone, err)
+			
+			// Try to send OTP for phone verification and allow password reset
+			// For now, inform user they need to use website/app
+			h.sendMessage(chatID, "⚠️ حساب کاربری شما وجود دارد اما رمز عبور تغییر کرده است.\n\n"+
+				"لطفاً از طریق وب‌سایت یا اپلیکیشن وارد شوید.\n\n"+
+				"یا اگر می‌خواهید از ربات استفاده کنید، لطفاً رمز عبور خود را به حالت پیش‌فرض برگردانید.")
 			h.sessionMgr.ClearState(ctx, userID)
 			return
 		}
 
-		// Update session with login response
+		// Login successful - update session
 		session, _ := h.sessionMgr.GetSession(ctx, userID)
 		if session != nil {
 			userIDStr := loginResp.User.ID
@@ -275,6 +281,7 @@ func (h *Handlers) handleContact(msg *tgbotapi.Message) {
 	}
 
 	// User doesn't exist - register directly (no OTP needed for Telegram bot)
+	// Generate a secure default password based on phone number
 	defaultPassword := generateDefaultPassword(phone)
 	registerReq := RegisterRequest{
 		Phone:       phone,
@@ -285,13 +292,22 @@ func (h *Handlers) handleContact(msg *tgbotapi.Message) {
 		DisplayName: userName,
 	}
 
+	log.Printf("Registering new user: phone=%s, name=%s", phone, userName)
 	registerResp, err := h.apiClient.Register(ctx, registerReq)
 	if err != nil {
-		log.Printf("Failed to register: %v", err)
-		h.sendMessage(chatID, fmt.Sprintf("❌ خطا در ثبت‌نام: %v", err))
+		log.Printf("Failed to register user %s: %v", phone, err)
+		
+		// Check if it's a conflict error (user already exists)
+		if strings.Contains(err.Error(), "conflict") || strings.Contains(err.Error(), "exists") {
+			h.sendMessage(chatID, "⚠️ این شماره تلفن قبلاً ثبت‌نام شده است. لطفاً دوباره تلاش کنید.")
+		} else {
+			h.sendMessage(chatID, fmt.Sprintf("❌ خطا در ثبت‌نام: %v\n\nلطفاً دوباره تلاش کنید یا با پشتیبانی تماس بگیرید.", err))
+		}
 		h.sessionMgr.ClearState(ctx, userID)
 		return
 	}
+	
+	log.Printf("User registered successfully: userID=%s, phone=%s", registerResp.UserID, phone)
 
 	// Update session
 	session, _ := h.sessionMgr.GetSession(ctx, userID)
