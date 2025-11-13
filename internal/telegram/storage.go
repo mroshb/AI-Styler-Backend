@@ -59,7 +59,8 @@ func NewStorage(db *sql.DB, redisClient *redis.Client) (*Storage, error) {
 
 // createTables creates necessary database tables
 func (s *Storage) createTables() error {
-	query := `
+	// Create table if it doesn't exist
+	createTableQuery := `
 	CREATE TABLE IF NOT EXISTS telegram_sessions (
 		id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 		telegram_user_id BIGINT UNIQUE NOT NULL,
@@ -75,15 +76,44 @@ func (s *Storage) createTables() error {
 		created_at TIMESTAMP DEFAULT NOW(),
 		updated_at TIMESTAMP DEFAULT NOW()
 	);
-
-	CREATE INDEX IF NOT EXISTS idx_telegram_sessions_telegram_user_id ON telegram_sessions(telegram_user_id);
-	CREATE INDEX IF NOT EXISTS idx_telegram_sessions_backend_user_id ON telegram_sessions(backend_user_id);
-	CREATE INDEX IF NOT EXISTS idx_telegram_sessions_phone ON telegram_sessions(phone);
-	CREATE INDEX IF NOT EXISTS idx_telegram_sessions_token_expires_at ON telegram_sessions(token_expires_at);
 	`
 
-	_, err := s.db.Exec(query)
-	return err
+	if _, err := s.db.Exec(createTableQuery); err != nil {
+		return fmt.Errorf("failed to create telegram_sessions table: %w", err)
+	}
+
+	// Add missing columns if table already exists
+	alterQueries := []string{
+		`DO $$ 
+		BEGIN
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+			               WHERE table_name = 'telegram_sessions' AND column_name = 'token_expires_at') THEN
+				ALTER TABLE telegram_sessions ADD COLUMN token_expires_at TIMESTAMP;
+			END IF;
+		END $$;`,
+	}
+
+	for _, query := range alterQueries {
+		if _, err := s.db.Exec(query); err != nil {
+			return fmt.Errorf("failed to alter telegram_sessions table: %w", err)
+		}
+	}
+
+	// Create indexes
+	indexQueries := []string{
+		`CREATE INDEX IF NOT EXISTS idx_telegram_sessions_telegram_user_id ON telegram_sessions(telegram_user_id);`,
+		`CREATE INDEX IF NOT EXISTS idx_telegram_sessions_backend_user_id ON telegram_sessions(backend_user_id);`,
+		`CREATE INDEX IF NOT EXISTS idx_telegram_sessions_phone ON telegram_sessions(phone);`,
+		`CREATE INDEX IF NOT EXISTS idx_telegram_sessions_token_expires_at ON telegram_sessions(token_expires_at);`,
+	}
+
+	for _, query := range indexQueries {
+		if _, err := s.db.Exec(query); err != nil {
+			return fmt.Errorf("failed to create index: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // GetOrCreateSession gets or creates a session for a Telegram user
