@@ -90,6 +90,46 @@ func (s *Storage) createTables() error {
 			               WHERE table_name = 'telegram_sessions' AND column_name = 'token_expires_at') THEN
 				ALTER TABLE telegram_sessions ADD COLUMN token_expires_at TIMESTAMP;
 			END IF;
+			
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+			               WHERE table_name = 'telegram_sessions' AND column_name = 'first_name') THEN
+				ALTER TABLE telegram_sessions ADD COLUMN first_name VARCHAR(255);
+			END IF;
+			
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+			               WHERE table_name = 'telegram_sessions' AND column_name = 'last_name') THEN
+				ALTER TABLE telegram_sessions ADD COLUMN last_name VARCHAR(255);
+			END IF;
+			
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+			               WHERE table_name = 'telegram_sessions' AND column_name = 'username') THEN
+				ALTER TABLE telegram_sessions ADD COLUMN username VARCHAR(255);
+			END IF;
+			
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+			               WHERE table_name = 'telegram_sessions' AND column_name = 'language_code') THEN
+				ALTER TABLE telegram_sessions ADD COLUMN language_code VARCHAR(10);
+			END IF;
+			
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+			               WHERE table_name = 'telegram_sessions' AND column_name = 'backend_user_id') THEN
+				ALTER TABLE telegram_sessions ADD COLUMN backend_user_id UUID;
+			END IF;
+			
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+			               WHERE table_name = 'telegram_sessions' AND column_name = 'phone') THEN
+				ALTER TABLE telegram_sessions ADD COLUMN phone VARCHAR(20);
+			END IF;
+			
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+			               WHERE table_name = 'telegram_sessions' AND column_name = 'access_token') THEN
+				ALTER TABLE telegram_sessions ADD COLUMN access_token TEXT;
+			END IF;
+			
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+			               WHERE table_name = 'telegram_sessions' AND column_name = 'refresh_token') THEN
+				ALTER TABLE telegram_sessions ADD COLUMN refresh_token TEXT;
+			END IF;
 		END $$;`,
 	}
 
