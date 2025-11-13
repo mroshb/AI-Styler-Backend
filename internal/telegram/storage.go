@@ -14,14 +14,19 @@ import (
 
 // Session represents a Telegram user session
 type Session struct {
-	ID              string    `json:"id"`
-	TelegramUserID  int64     `json:"telegram_user_id"`
-	BackendUserID   *string   `json:"backend_user_id,omitempty"`
-	Phone           *string   `json:"phone,omitempty"`
-	AccessToken     *string   `json:"access_token,omitempty"`
-	RefreshToken    *string   `json:"refresh_token,omitempty"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	ID              string     `json:"id"`
+	TelegramUserID  int64      `json:"telegram_user_id"`
+	BackendUserID   *string    `json:"backend_user_id,omitempty"`
+	Phone           *string    `json:"phone,omitempty"`
+	AccessToken     *string    `json:"access_token,omitempty"`
+	RefreshToken    *string    `json:"refresh_token,omitempty"`
+	TokenExpiresAt  *time.Time `json:"token_expires_at,omitempty"`
+	FirstName       *string    `json:"first_name,omitempty"`
+	LastName        *string    `json:"last_name,omitempty"`
+	Username        *string    `json:"username,omitempty"`
+	LanguageCode    *string    `json:"language_code,omitempty"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
 }
 
 // UserState represents temporary user state (e.g., waiting for image, OTP, etc.)
@@ -62,12 +67,19 @@ func (s *Storage) createTables() error {
 		phone VARCHAR(20),
 		access_token TEXT,
 		refresh_token TEXT,
+		token_expires_at TIMESTAMP,
+		first_name VARCHAR(255),
+		last_name VARCHAR(255),
+		username VARCHAR(255),
+		language_code VARCHAR(10),
 		created_at TIMESTAMP DEFAULT NOW(),
 		updated_at TIMESTAMP DEFAULT NOW()
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_telegram_sessions_telegram_user_id ON telegram_sessions(telegram_user_id);
 	CREATE INDEX IF NOT EXISTS idx_telegram_sessions_backend_user_id ON telegram_sessions(backend_user_id);
+	CREATE INDEX IF NOT EXISTS idx_telegram_sessions_phone ON telegram_sessions(phone);
+	CREATE INDEX IF NOT EXISTS idx_telegram_sessions_token_expires_at ON telegram_sessions(token_expires_at);
 	`
 
 	_, err := s.db.Exec(query)
@@ -77,8 +89,11 @@ func (s *Storage) createTables() error {
 // GetOrCreateSession gets or creates a session for a Telegram user
 func (s *Storage) GetOrCreateSession(ctx context.Context, telegramUserID int64) (*Session, error) {
 	var session Session
+	var tokenExpiresAt sql.NullTime
 	query := `
-		SELECT id, telegram_user_id, backend_user_id, phone, access_token, refresh_token, created_at, updated_at
+		SELECT id, telegram_user_id, backend_user_id, phone, access_token, refresh_token, 
+		       token_expires_at, first_name, last_name, username, language_code, 
+		       created_at, updated_at
 		FROM telegram_sessions
 		WHERE telegram_user_id = $1
 	`
@@ -90,17 +105,25 @@ func (s *Storage) GetOrCreateSession(ctx context.Context, telegramUserID int64) 
 		&session.Phone,
 		&session.AccessToken,
 		&session.RefreshToken,
+		&tokenExpiresAt,
+		&session.FirstName,
+		&session.LastName,
+		&session.Username,
+		&session.LanguageCode,
 		&session.CreatedAt,
 		&session.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {
 		// Create new session
+		var newTokenExpiresAt sql.NullTime
 		sessionID := uuid.New().String()
 		insertQuery := `
 			INSERT INTO telegram_sessions (id, telegram_user_id, created_at, updated_at)
 			VALUES ($1, $2, NOW(), NOW())
-			RETURNING id, telegram_user_id, backend_user_id, phone, access_token, refresh_token, created_at, updated_at
+			RETURNING id, telegram_user_id, backend_user_id, phone, access_token, refresh_token, 
+			          token_expires_at, first_name, last_name, username, language_code, 
+			          created_at, updated_at
 		`
 
 		err = s.db.QueryRowContext(ctx, insertQuery, sessionID, telegramUserID).Scan(
@@ -110,6 +133,11 @@ func (s *Storage) GetOrCreateSession(ctx context.Context, telegramUserID int64) 
 			&session.Phone,
 			&session.AccessToken,
 			&session.RefreshToken,
+			&newTokenExpiresAt,
+			&session.FirstName,
+			&session.LastName,
+			&session.Username,
+			&session.LanguageCode,
 			&session.CreatedAt,
 			&session.UpdatedAt,
 		)
@@ -117,8 +145,15 @@ func (s *Storage) GetOrCreateSession(ctx context.Context, telegramUserID int64) 
 		if err != nil {
 			return nil, fmt.Errorf("failed to create session: %w", err)
 		}
+		if newTokenExpiresAt.Valid {
+			session.TokenExpiresAt = &newTokenExpiresAt.Time
+		}
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to get session: %w", err)
+	}
+
+	if tokenExpiresAt.Valid {
+		session.TokenExpiresAt = &tokenExpiresAt.Time
 	}
 
 	return &session, nil
@@ -132,8 +167,13 @@ func (s *Storage) UpdateSession(ctx context.Context, session *Session) error {
 		    phone = $2,
 		    access_token = $3,
 		    refresh_token = $4,
+		    token_expires_at = $5,
+		    first_name = $6,
+		    last_name = $7,
+		    username = $8,
+		    language_code = $9,
 		    updated_at = NOW()
-		WHERE telegram_user_id = $5
+		WHERE telegram_user_id = $10
 	`
 
 	_, err := s.db.ExecContext(ctx, query,
@@ -141,6 +181,11 @@ func (s *Storage) UpdateSession(ctx context.Context, session *Session) error {
 		session.Phone,
 		session.AccessToken,
 		session.RefreshToken,
+		session.TokenExpiresAt,
+		session.FirstName,
+		session.LastName,
+		session.Username,
+		session.LanguageCode,
 		session.TelegramUserID,
 	)
 
@@ -150,8 +195,11 @@ func (s *Storage) UpdateSession(ctx context.Context, session *Session) error {
 // GetSessionByTelegramID gets a session by Telegram user ID
 func (s *Storage) GetSessionByTelegramID(ctx context.Context, telegramUserID int64) (*Session, error) {
 	var session Session
+	var tokenExpiresAt sql.NullTime
 	query := `
-		SELECT id, telegram_user_id, backend_user_id, phone, access_token, refresh_token, created_at, updated_at
+		SELECT id, telegram_user_id, backend_user_id, phone, access_token, refresh_token, 
+		       token_expires_at, first_name, last_name, username, language_code, 
+		       created_at, updated_at
 		FROM telegram_sessions
 		WHERE telegram_user_id = $1
 	`
@@ -163,6 +211,11 @@ func (s *Storage) GetSessionByTelegramID(ctx context.Context, telegramUserID int
 		&session.Phone,
 		&session.AccessToken,
 		&session.RefreshToken,
+		&tokenExpiresAt,
+		&session.FirstName,
+		&session.LastName,
+		&session.Username,
+		&session.LanguageCode,
 		&session.CreatedAt,
 		&session.UpdatedAt,
 	)
@@ -172,6 +225,10 @@ func (s *Storage) GetSessionByTelegramID(ctx context.Context, telegramUserID int
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get session: %w", err)
+	}
+
+	if tokenExpiresAt.Valid {
+		session.TokenExpiresAt = &tokenExpiresAt.Time
 	}
 
 	return &session, nil

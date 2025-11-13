@@ -142,6 +142,23 @@ func BackToMenuKeyboard() tgbotapi.InlineKeyboardMarkup {
 	)
 }
 
+// ShareContactKeyboard returns keyboard with share contact button
+func ShareContactKeyboard() tgbotapi.ReplyKeyboardMarkup {
+	return tgbotapi.NewReplyKeyboard(
+		tgbotapi.NewKeyboardButtonRow(
+			tgbotapi.NewKeyboardButtonContact("📱 Share Contact"),
+		),
+		tgbotapi.NewKeyboardButtonRow(
+			tgbotapi.NewKeyboardButton("❌ Cancel"),
+		),
+	)
+}
+
+// RemoveKeyboard removes the custom keyboard
+func RemoveKeyboard() tgbotapi.ReplyKeyboardRemove {
+	return tgbotapi.NewRemoveKeyboard(true)
+}
+
 // getStyleDisplayName returns Persian display name for style
 func getStyleDisplayName(style string) string {
 	styleNames := map[string]string{

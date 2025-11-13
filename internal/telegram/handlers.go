@@ -82,6 +82,12 @@ func (h *Handlers) HandleMessage(msg *tgbotapi.Message) {
 		h.handleDocument(msg)
 		return
 	}
+
+	// Handle contact sharing
+	if msg.Contact != nil {
+		h.handleContact(msg)
+		return
+	}
 }
 
 // handleCommand handles bot commands
@@ -124,10 +130,13 @@ func (h *Handlers) handleStartCommand(msg *tgbotapi.Message) {
 	if authenticated {
 		h.sendMessageWithKeyboard(chatID, MsgWelcomeBack, MainMenuKeyboard())
 	} else {
-		// User not authenticated - show welcome and prompt for login
-		h.sendMessageWithKeyboard(chatID, MsgWelcome+"\n\n"+MsgPleaseLogin, MainMenuKeyboard())
-		// Set state to wait for phone number if user wants to start conversion
-		// This will be handled when they click "start_conversion"
+		// User not authenticated - show welcome and prompt for contact sharing
+		h.sendMessage(chatID, MsgWelcome+"\n\n"+MsgPleaseLogin+"\n\n"+MsgShareContact)
+		msg := tgbotapi.NewMessage(chatID, "لطفاً کانتکت خودتون رو share کنید:")
+		msg.ReplyMarkup = ShareContactKeyboard()
+		h.bot.Send(msg)
+		// Set state to wait for contact
+		h.sessionMgr.SetState(ctx, userID, "waiting_contact", "")
 	}
 }
 
@@ -152,104 +161,76 @@ func (h *Handlers) handleTextMessage(msg *tgbotapi.Message) {
 	}
 
 	switch state.Action {
-	case "waiting_phone":
-		h.handlePhoneInput(msg, text)
-	case "waiting_otp":
-		h.handleOTPInput(msg, text)
 	case "waiting_password":
 		h.handlePasswordInput(msg, text)
+	case "waiting_contact":
+		// User should share contact, not send text
+		if text == "❌ Cancel" {
+			h.sessionMgr.ClearState(ctx, userID)
+			msg := tgbotapi.NewMessage(chatID, "عملیات لغو شد.")
+			msg.ReplyMarkup = RemoveKeyboard()
+			h.bot.Send(msg)
+			h.sendMessageWithKeyboard(chatID, "منوی اصلی:", MainMenuKeyboard())
+		} else {
+			h.sendMessage(chatID, MsgContactNotShared)
+		}
 	default:
 		h.sendMessage(chatID, "لطفاً از منو استفاده کنید.")
 	}
 }
 
-// handlePhoneInput handles phone number input
-func (h *Handlers) handlePhoneInput(msg *tgbotapi.Message, phone string) {
+// handleContact handles contact sharing for authentication
+func (h *Handlers) handleContact(msg *tgbotapi.Message) {
 	ctx := context.Background()
 	userID := msg.From.ID
 	chatID := msg.Chat.ID
+	contact := msg.Contact
+
+	log.Printf("📞 Handling contact from user %d: phone=%s, user_id=%d", userID, contact.PhoneNumber, contact.UserID)
+
+	// Verify that the contact belongs to the user who sent it
+	if contact.UserID != userID {
+		h.sendMessage(chatID, "⚠️ لطفاً کانتکت خودتون رو share کنید، نه کانتکت شخص دیگری.")
+		return
+	}
 
 	// Normalize phone number
-	phone = normalizePhone(phone)
+	phone := normalizePhone(contact.PhoneNumber)
 	if phone == "" {
-		h.sendMessage(chatID, "شماره تلفن نامعتبر است. لطفاً دوباره وارد کنید:")
+		h.sendMessage(chatID, "❌ شماره تلفن نامعتبر است. لطفاً دوباره تلاش کنید.")
 		return
 	}
 
-	// Send OTP
-	resp, err := h.apiClient.SendOTP(ctx, phone)
+	// Remove keyboard
+	msgConfig := tgbotapi.NewMessage(chatID, MsgContactReceived)
+	msgConfig.ReplyMarkup = RemoveKeyboard()
+	h.bot.Send(msgConfig)
+
+	// Check if user exists
+	userExists, err := h.apiClient.CheckUser(ctx, phone)
 	if err != nil {
-		log.Printf("Failed to send OTP: %v", err)
-		h.sendMessage(chatID, MsgErrorGeneric)
+		log.Printf("Failed to check user: %v", err)
+		h.sendMessage(chatID, MsgContactVerificationFailed)
+		h.sessionMgr.ClearState(ctx, userID)
 		return
 	}
 
-	if !resp.Sent {
-		h.sendMessage(chatID, "ارسال کد تأیید با خطا مواجه شد. لطفاً دوباره تلاش کنید.")
-		return
-	}
-
-	// Update state
-	h.sessionMgr.SetState(ctx, userID, "waiting_otp", phone)
-	h.sendMessage(chatID, MsgOTPSent)
-}
-
-// handleOTPInput handles OTP code input
-func (h *Handlers) handleOTPInput(msg *tgbotapi.Message, code string) {
-	ctx := context.Background()
-	userID := msg.From.ID
-	chatID := msg.Chat.ID
-
-	// Get phone from state
-	state, err := h.sessionMgr.GetState(ctx, userID)
-	if err != nil || state == nil {
-		h.sendMessage(chatID, "خطا در دریافت اطلاعات. لطفاً دوباره شروع کنید.")
-		return
-	}
-
-	phone := state.Data
-	if len(code) != 6 {
-		h.sendMessage(chatID, "کد باید ۶ رقمی باشد. لطفاً دوباره وارد کنید:")
-		return
-	}
-
-	// Verify OTP
-	resp, err := h.apiClient.VerifyOTP(ctx, phone, code)
-	if err != nil {
-		log.Printf("Failed to verify OTP: %v", err)
-		h.sendMessage(chatID, MsgOTPInvalid)
-		return
-	}
-
-	if !resp.Verified {
-		h.sendMessage(chatID, MsgOTPInvalid)
-		return
-	}
-
-	// Check if user exists - try to auto-register first
-	// In production, you might want to ask for password or use phone-only auth
-	defaultPassword := generateDefaultPassword(phone)
+	// Get user name from Telegram
 	userName := msg.From.FirstName
 	if msg.From.LastName != "" {
 		userName += " " + msg.From.LastName
 	}
 
-	registerReq := RegisterRequest{
-		Phone:    phone,
-		Password: defaultPassword,
-		Name:     userName,
-		Role:     "user",
-	}
-
-	registerResp, err := h.apiClient.Register(ctx, registerReq)
-	if err != nil {
-		// User might already exist, try login with default password
-		loginResp, loginErr := h.apiClient.Login(ctx, phone, defaultPassword)
-		if loginErr != nil {
+	if userExists {
+		// User exists - auto login (no password needed for Telegram auth)
+		// For Telegram bot, we'll use a special login method or auto-generate password
+		defaultPassword := generateDefaultPassword(phone)
+		loginResp, err := h.apiClient.Login(ctx, phone, defaultPassword)
+		if err != nil {
 			// If login fails, user might have changed password
-			// For now, ask user to register via web/app
-			log.Printf("Failed to register/login: %v, %v", err, loginErr)
-			h.sendMessage(chatID, "کاربری با این شماره وجود دارد اما رمز عبور متفاوت است. لطفاً از طریق وب‌سایت یا اپلیکیشن وارد شوید.")
+			// For Telegram bot, we'll create a new session with phone verification
+			log.Printf("Auto-login failed, trying to register or use phone-only auth: %v", err)
+			h.sendMessage(chatID, "⚠️ برای ورود، لطفاً از طریق وب‌سایت یا اپلیکیشن وارد شوید و رمز عبور خود را تنظیم کنید.")
 			h.sessionMgr.ClearState(ctx, userID)
 			return
 		}
@@ -260,10 +241,27 @@ func (h *Handlers) handleOTPInput(msg *tgbotapi.Message, code string) {
 			userIDStr := loginResp.User.ID
 			accessToken := loginResp.AccessToken
 			refreshToken := loginResp.RefreshToken
+			expiresAt := time.Now().Add(time.Duration(loginResp.AccessExpiresIn) * time.Second)
+			firstName := msg.From.FirstName
+			lastName := msg.From.LastName
+			username := msg.From.UserName
+			langCode := msg.From.LanguageCode
+			
 			session.BackendUserID = &userIDStr
 			session.Phone = &phone
 			session.AccessToken = &accessToken
 			session.RefreshToken = &refreshToken
+			session.TokenExpiresAt = &expiresAt
+			session.FirstName = &firstName
+			if lastName != "" {
+				session.LastName = &lastName
+			}
+			if username != "" {
+				session.Username = &username
+			}
+			if langCode != "" {
+				session.LanguageCode = &langCode
+			}
 			h.sessionMgr.UpdateSession(ctx, session)
 
 			// Store tokens in Redis
@@ -276,16 +274,50 @@ func (h *Handlers) handleOTPInput(msg *tgbotapi.Message, code string) {
 		return
 	}
 
+	// User doesn't exist - auto register
+	defaultPassword := generateDefaultPassword(phone)
+	registerReq := RegisterRequest{
+		Phone:    phone,
+		Password: defaultPassword,
+		Name:     userName,
+		Role:     "user",
+	}
+
+	registerResp, err := h.apiClient.Register(ctx, registerReq)
+	if err != nil {
+		log.Printf("Failed to register: %v", err)
+		h.sendMessage(chatID, MsgContactVerificationFailed)
+		h.sessionMgr.ClearState(ctx, userID)
+		return
+	}
+
 	// Update session
 	session, _ := h.sessionMgr.GetSession(ctx, userID)
 	if session != nil {
 		userIDStr := registerResp.UserID
 		accessToken := registerResp.AccessToken
 		refreshToken := registerResp.RefreshToken
+		expiresAt := time.Now().Add(time.Duration(registerResp.AccessExpiresIn) * time.Second)
+		firstName := msg.From.FirstName
+		lastName := msg.From.LastName
+		username := msg.From.UserName
+		langCode := msg.From.LanguageCode
+		
 		session.BackendUserID = &userIDStr
 		session.Phone = &phone
 		session.AccessToken = &accessToken
 		session.RefreshToken = &refreshToken
+		session.TokenExpiresAt = &expiresAt
+		session.FirstName = &firstName
+		if lastName != "" {
+			session.LastName = &lastName
+		}
+		if username != "" {
+			session.Username = &username
+		}
+		if langCode != "" {
+			session.LanguageCode = &langCode
+		}
 		h.sessionMgr.UpdateSession(ctx, session)
 
 		// Store tokens in Redis
@@ -478,10 +510,12 @@ func (h *Handlers) handleStartConversion(query *tgbotapi.CallbackQuery) {
 	authenticated, err := h.sessionMgr.IsAuthenticated(ctx, userID)
 	if err != nil || !authenticated {
 		h.answerCallback(query.ID, "")
-		h.sendMessage(chatID, MsgErrorUnauthorized+"\n\n"+MsgPleaseLogin)
-		// Prompt for phone number
-		h.sessionMgr.SetState(ctx, userID, "waiting_phone", "")
-		h.sendMessage(chatID, MsgEnterPhone)
+		h.sendMessage(chatID, MsgErrorUnauthorized+"\n\n"+MsgShareContact)
+		msgConfig := tgbotapi.NewMessage(chatID, "لطفاً کانتکت خودتون رو share کنید:")
+		msgConfig.ReplyMarkup = ShareContactKeyboard()
+		h.bot.Send(msgConfig)
+		// Set state to wait for contact
+		h.sessionMgr.SetState(ctx, userID, "waiting_contact", "")
 		return
 	}
 
@@ -672,10 +706,12 @@ func (h *Handlers) handleMyConversions(query *tgbotapi.CallbackQuery) {
 	authenticated, err := h.sessionMgr.IsAuthenticated(ctx, userID)
 	if err != nil || !authenticated {
 		h.answerCallback(query.ID, "")
-		h.sendMessage(chatID, MsgErrorUnauthorized+"\n\n"+MsgPleaseLogin)
-		// Prompt for phone number
-		h.sessionMgr.SetState(ctx, userID, "waiting_phone", "")
-		h.sendMessage(chatID, MsgEnterPhone)
+		h.sendMessage(chatID, MsgErrorUnauthorized+"\n\n"+MsgShareContact)
+		msgConfig := tgbotapi.NewMessage(chatID, "لطفاً کانتکت خودتون رو share کنید:")
+		msgConfig.ReplyMarkup = ShareContactKeyboard()
+		h.bot.Send(msgConfig)
+		// Set state to wait for contact
+		h.sessionMgr.SetState(ctx, userID, "waiting_contact", "")
 		return
 	}
 

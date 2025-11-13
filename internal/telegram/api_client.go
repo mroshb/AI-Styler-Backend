@@ -81,6 +81,16 @@ type VerifyOTPResponse struct {
 	Verified bool `json:"verified"`
 }
 
+// CheckUserRequest represents check user request
+type CheckUserRequest struct {
+	Phone string `json:"phone"`
+}
+
+// CheckUserResponse represents check user response
+type CheckUserResponse struct {
+	Registered bool `json:"registered"`
+}
+
 // RegisterRequest represents registration request
 type RegisterRequest struct {
 	Phone    string `json:"phone"`
@@ -265,6 +275,30 @@ func (c *APIClient) VerifyOTP(ctx context.Context, phone, code string) (*VerifyO
 	}
 
 	return &result, nil
+}
+
+// CheckUser checks if a user exists
+func (c *APIClient) CheckUser(ctx context.Context, phone string) (bool, error) {
+	req := CheckUserRequest{
+		Phone: phone,
+	}
+
+	resp, err := c.doRequest(ctx, "POST", "/auth/check-user", req, nil)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+
+	var result CheckUserResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return false, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return false, fmt.Errorf("API error: %d", resp.StatusCode)
+	}
+
+	return result.Registered, nil
 }
 
 // Register registers a new user
