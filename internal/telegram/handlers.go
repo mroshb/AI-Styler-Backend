@@ -274,19 +274,21 @@ func (h *Handlers) handleContact(msg *tgbotapi.Message) {
 		return
 	}
 
-	// User doesn't exist - auto register
+	// User doesn't exist - register directly (no OTP needed for Telegram bot)
 	defaultPassword := generateDefaultPassword(phone)
 	registerReq := RegisterRequest{
-		Phone:    phone,
-		Password: defaultPassword,
-		Name:     userName,
-		Role:     "user",
+		Phone:       phone,
+		Password:    defaultPassword,
+		Name:        userName,
+		Role:        "user",
+		AutoLogin:   true,
+		DisplayName: userName,
 	}
 
 	registerResp, err := h.apiClient.Register(ctx, registerReq)
 	if err != nil {
 		log.Printf("Failed to register: %v", err)
-		h.sendMessage(chatID, MsgContactVerificationFailed)
+		h.sendMessage(chatID, fmt.Sprintf("❌ خطا در ثبت‌نام: %v", err))
 		h.sessionMgr.ClearState(ctx, userID)
 		return
 	}

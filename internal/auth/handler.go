@@ -254,10 +254,17 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		common.WriteError(w, http.StatusConflict, "conflict", "account exists", nil)
 		return
 	}
-	verified, _ := h.store.IsPhoneVerified(r.Context(), phone)
-	if !verified {
-		common.WriteError(w, http.StatusForbidden, "unverified", "phone not verified", nil)
-		return
+	// Skip phone verification if request comes from Telegram bot (has X-API-Key header)
+	// Telegram bot registration doesn't require OTP verification
+	apiKey := r.Header.Get("X-API-Key")
+	skipVerification := apiKey != ""
+	
+	if !skipVerification {
+		verified, _ := h.store.IsPhoneVerified(r.Context(), phone)
+		if !verified {
+			common.WriteError(w, http.StatusForbidden, "unverified", "phone not verified", nil)
+			return
+		}
 	}
 	hash, err := h.hasher.Hash(req.Password)
 	if err != nil {
@@ -269,6 +276,12 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		common.WriteError(w, http.StatusInternalServerError, "server_error", "could not create user", nil)
 		return
 	}
+	
+	// If registration came from Telegram bot, mark phone as verified automatically
+	if skipVerification {
+		_ = h.store.MarkPhoneVerified(r.Context(), phone)
+	}
+	
 	resp := registerResp{UserID: userID, Role: req.Role, IsPhoneVerified: true}
 	if req.AutoLogin {
 		at, rt, expAt, err := h.tokens.IssueTokens(r.Context(), userID, phone, req.Role, "")

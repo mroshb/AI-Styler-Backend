@@ -71,8 +71,12 @@ func (h *Handler) CreateConversion(w http.ResponseWriter, r *http.Request) {
 			common.WriteError(w, http.StatusTooManyRequests, "rate_limit_exceeded", err.Error(), nil)
 			return
 		}
-		if strings.Contains(err.Error(), "invalid") || strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "not accessible") {
+		if strings.Contains(err.Error(), "invalid") || strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "not accessible") || strings.Contains(err.Error(), "must be different") {
 			common.WriteError(w, http.StatusBadRequest, "invalid_request", err.Error(), nil)
+			return
+		}
+		if strings.Contains(err.Error(), "chk_conversion_images") || strings.Contains(err.Error(), "violates check constraint") {
+			common.WriteError(w, http.StatusBadRequest, "invalid_request", "user image and cloth image must be different", nil)
 			return
 		}
 		common.WriteError(w, http.StatusInternalServerError, "server_error", "failed to create conversion", nil)

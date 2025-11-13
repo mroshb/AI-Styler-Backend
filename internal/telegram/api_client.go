@@ -93,10 +93,12 @@ type CheckUserResponse struct {
 
 // RegisterRequest represents registration request
 type RegisterRequest struct {
-	Phone    string `json:"phone"`
-	Password string `json:"password"`
-	Name     string `json:"name"`
-	Role     string `json:"role"`
+	Phone       string `json:"phone"`
+	Password    string `json:"password"`
+	Name        string `json:"name"`
+	Role        string `json:"role"`
+	AutoLogin   bool   `json:"autoLogin"`
+	DisplayName string `json:"displayName,omitempty"`
 }
 
 // RegisterResponse represents registration response
@@ -255,8 +257,9 @@ func (c *APIClient) SendOTP(ctx context.Context, phone string) (*SendOTPResponse
 // VerifyOTP verifies OTP code
 func (c *APIClient) VerifyOTP(ctx context.Context, phone, code string) (*VerifyOTPResponse, error) {
 	req := VerifyOTPRequest{
-		Phone: phone,
-		Code:  code,
+		Phone:   phone,
+		Code:    code,
+		Purpose: "phone_verify",
 	}
 
 	resp, err := c.doRequest(ctx, "POST", "/auth/verify-otp", req, nil)
@@ -309,13 +312,25 @@ func (c *APIClient) Register(ctx context.Context, req RegisterRequest) (*Registe
 	}
 	defer resp.Body.Close()
 
-	var result RegisterResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	// Read response body to check for errors
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API error: %d", resp.StatusCode)
+		// Try to parse error response
+		var apiErr APIError
+		if err := json.Unmarshal(bodyBytes, &apiErr); err == nil {
+			return nil, fmt.Errorf("API error: %d - %s: %s", resp.StatusCode, apiErr.Code, apiErr.Message)
+		}
+		// If error parsing fails, return status code with body
+		return nil, fmt.Errorf("API error: %d - %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var result RegisterResponse
+	if err := json.Unmarshal(bodyBytes, &result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
 	return &result, nil

@@ -52,8 +52,16 @@ func (s *Service) CreateConversion(ctx context.Context, userID string, req Conve
 		return ConversionResponse{}, fmt.Errorf("rate limit exceeded")
 	}
 
+	// Validate that user_image_id and cloth_image_id are different
+	userImageID := req.GetUserImageID()
+	clothImageID := req.GetClothImageID()
+	
+	if userImageID == clothImageID {
+		return ConversionResponse{}, fmt.Errorf("user image and cloth image must be different")
+	}
+
 	// Validate image access
-	if err := s.imageService.ValidateImageAccess(ctx, req.UserImageID, userID); err != nil {
+	if err := s.imageService.ValidateImageAccess(ctx, userImageID, userID); err != nil {
 		return ConversionResponse{}, fmt.Errorf("invalid user image access: %w", err)
 	}
 
@@ -62,7 +70,7 @@ func (s *Service) CreateConversion(ctx context.Context, userID string, req Conve
 	// 1. Public image (is_public = true)
 	// 2. Vendor image (type = 'vendor')
 	// 3. User's own image (belongs to the same user)
-	clothImage, err := s.imageService.GetImage(ctx, req.ClothImageID)
+	clothImage, err := s.imageService.GetImage(ctx, clothImageID)
 	if err != nil {
 		return ConversionResponse{}, fmt.Errorf("invalid cloth image: %w", err)
 	}
@@ -88,7 +96,7 @@ func (s *Service) CreateConversion(ctx context.Context, userID string, req Conve
 
 	// Create conversion (this will also update quota counters)
 	styleName := req.GetStyleName()
-	conversionID, err := s.store.CreateConversion(ctx, userID, req.UserImageID, req.ClothImageID, styleName)
+	conversionID, err := s.store.CreateConversion(ctx, userID, userImageID, clothImageID, styleName)
 	if err != nil {
 		return ConversionResponse{}, fmt.Errorf("failed to create conversion: %w", err)
 	}
