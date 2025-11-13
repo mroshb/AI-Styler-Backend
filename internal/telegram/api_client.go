@@ -72,8 +72,9 @@ type SendOTPResponse struct {
 
 // VerifyOTPRequest represents verify OTP request
 type VerifyOTPRequest struct {
-	Phone string `json:"phone"`
-	Code  string `json:"code"`
+	Phone   string `json:"phone"`
+	Code    string `json:"code"`
+	Purpose string `json:"purpose"`
 }
 
 // VerifyOTPResponse represents verify OTP response
