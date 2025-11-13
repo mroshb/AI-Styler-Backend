@@ -550,11 +550,11 @@ func (h *Handler) returnMockConversion(w http.ResponseWriter, r *http.Request, u
 
 	// Generate mock image URLs
 	// For user and cloth images, use real API endpoints (these images exist)
-	// For result image (mock), use a placeholder image service
+	// For result image (mock), use a fixed mock image URL
 	userImageURL := fmt.Sprintf("%s/api/images/%s", baseURL, userImageID)
 	clothImageURL := fmt.Sprintf("%s/api/images/%s", baseURL, clothImageID)
-	// Use placeholder.com for mock result image (800x600 placeholder)
-	resultImageURL := "https://via.placeholder.com/800x600/4A90E2/FFFFFF?text=Mock+Result+Image"
+	// Use fixed mock result image URL
+	resultImageURL := "https://mynaa.ir/assets/images/slider/Shadmehr.jpg"
 
 	mockResponse := ConversionResponse{
 		ID:               conversionID,
