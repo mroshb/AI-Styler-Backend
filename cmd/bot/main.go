@@ -92,6 +92,11 @@ func main() {
 		}
 	}()
 
+	// Give bot time to start
+	time.Sleep(2 * time.Second)
+	log.Printf("✅ Bot service started successfully!")
+	log.Printf("📱 Send /start to your bot to test it")
+
 	// Wait for interrupt signal
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)

@@ -43,6 +43,10 @@ func (h *Handlers) SetBot(bot *tgbotapi.BotAPI) {
 func (h *Handlers) HandleMessage(msg *tgbotapi.Message) {
 	ctx := context.Background()
 	userID := msg.From.ID
+	chatID := msg.Chat.ID
+
+	log.Printf("📨 Handling message from user %d (chat %d): command='%s', text='%s'", 
+		userID, chatID, msg.Command(), msg.Text)
 
 	// Rate limiting
 	allowed, err := h.rateLimiter.AllowUserMessage(ctx, userID, h.config.RateLimit.MessagesPerMinute, time.Minute)
@@ -100,6 +104,8 @@ func (h *Handlers) handleStartCommand(msg *tgbotapi.Message) {
 	ctx := context.Background()
 	userID := msg.From.ID
 	chatID := msg.Chat.ID
+
+	log.Printf("🎯 Processing /start command from user %d", userID)
 
 	// Get or create session
 	_, err := h.sessionMgr.GetSession(ctx, userID)

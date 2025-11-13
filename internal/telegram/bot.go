@@ -24,12 +24,22 @@ type Bot struct {
 
 // NewBot creates a new bot instance
 func NewBot(config *Config, handlers *Handlers) (*Bot, error) {
+	log.Printf("Creating bot with token: %s...", maskToken(config.Telegram.BotToken))
+	
 	bot, err := tgbotapi.NewBotAPI(config.Telegram.BotToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create bot: %w", err)
 	}
 
 	bot.Debug = config.Telegram.Env == "development"
+
+	// Verify bot connection
+	botInfo, err := bot.GetMe()
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify bot token: %w", err)
+	}
+
+	log.Printf("Bot authenticated successfully! Username: @%s (ID: %d)", botInfo.UserName, botInfo.ID)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -44,6 +54,14 @@ func NewBot(config *Config, handlers *Handlers) (*Bot, error) {
 	}, nil
 }
 
+// maskToken masks the token for logging (shows only first 10 and last 4 characters)
+func maskToken(token string) string {
+	if len(token) <= 14 {
+		return "***"
+	}
+	return token[:10] + "..." + token[len(token)-4:]
+}
+
 // Start starts the bot in polling or webhook mode
 func (b *Bot) Start() error {
 	if b.config.Telegram.Env == "production" && b.webhookURL != "" {
@@ -56,16 +74,26 @@ func (b *Bot) Start() error {
 func (b *Bot) startPolling() error {
 	log.Printf("Starting bot in polling mode...")
 	
+	// Clear any pending updates
+	_, err := b.api.Request(tgbotapi.DeleteWebhookConfig{DropPendingUpdates: true})
+	if err != nil {
+		log.Printf("Warning: Failed to clear pending updates: %v", err)
+	}
+	
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
+	log.Printf("Getting updates channel...")
 	updates := b.api.GetUpdatesChan(u)
+	log.Printf("✅ Bot is now listening for updates! Send /start to test.")
 
 	for {
 		select {
 		case <-b.ctx.Done():
+			log.Printf("Polling context cancelled, stopping...")
 			return nil
 		case update := <-updates:
+			log.Printf("Received update: Message=%v, CallbackQuery=%v", update.Message != nil, update.CallbackQuery != nil)
 			go b.handleUpdate(update)
 		}
 	}
