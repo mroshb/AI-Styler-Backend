@@ -161,6 +161,9 @@ type ConversionResponse struct {
 	CreatedAt        time.Time  `json:"createdAt"`
 	UpdatedAt        time.Time  `json:"updatedAt"`
 	CompletedAt      *time.Time `json:"completedAt,omitempty"`
+	UserImageURL     string     `json:"userImageUrl,omitempty"`
+	ClothImageURL    string     `json:"clothImageUrl,omitempty"`
+	ResultImageURL   string     `json:"resultImageUrl,omitempty"`
 }
 
 // ConversionsListResponse represents conversions list response

@@ -579,7 +579,13 @@ func (h *Handlers) handlePhoto(msg *tgbotapi.Message) {
 		h.sendMessage(chatID, fmt.Sprintf("✅ تبدیل با موفقیت انجام شد!\n\nشناسه تبدیل: %s", convResp.ID))
 		
 		// Send result image if available
-		if convResp.ResultImageID != nil {
+		// First try to use ResultImageURL from response (for mock responses)
+		if convResp.ResultImageURL != "" {
+			photo := tgbotapi.NewPhoto(chatID, tgbotapi.FileURL(convResp.ResultImageURL))
+			photo.Caption = "نتیجه تبدیل:"
+			h.bot.Send(photo)
+		} else if convResp.ResultImageID != nil {
+			// Fallback: get image URL from API
 			imageURL, err := h.apiClient.GetImageURL(ctx, accessToken, *convResp.ResultImageID)
 			if err == nil {
 				photo := tgbotapi.NewPhoto(chatID, tgbotapi.FileURL(imageURL))
