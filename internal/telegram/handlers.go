@@ -131,8 +131,10 @@ func (h *Handlers) handleStartCommand(msg *tgbotapi.Message) {
 		h.sendMessageWithKeyboard(chatID, MsgWelcomeBack, MainMenuKeyboard())
 	} else {
 		// User not authenticated - show welcome and prompt for contact sharing
-		h.sendMessage(chatID, MsgWelcome+"\n\n"+MsgPleaseLogin+"\n\n"+MsgShareContact)
-		msg := tgbotapi.NewMessage(chatID, "لطفاً کانتکت خودتون رو share کنید:")
+		welcomeMsg := MsgWelcome + "\n\n" + MsgPleaseLogin + "\n\n" + MsgShareContact
+		h.sendMessage(chatID, welcomeMsg)
+		time.Sleep(300 * time.Millisecond)
+		msg := tgbotapi.NewMessage(chatID, "📱 لطفاً کانتکت خودتون رو share کنید:")
 		msg.ReplyMarkup = ShareContactKeyboard()
 		h.bot.Send(msg)
 		// Set state to wait for contact
@@ -167,10 +169,10 @@ func (h *Handlers) handleTextMessage(msg *tgbotapi.Message) {
 		// User should share contact, not send text
 		if text == "❌ Cancel" {
 			h.sessionMgr.ClearState(ctx, userID)
-			msg := tgbotapi.NewMessage(chatID, "عملیات لغو شد.")
+			msg := tgbotapi.NewMessage(chatID, "✅ عملیات لغو شد.")
 			msg.ReplyMarkup = RemoveKeyboard()
 			h.bot.Send(msg)
-			h.sendMessageWithKeyboard(chatID, "منوی اصلی:", MainMenuKeyboard())
+			h.sendMessageWithKeyboard(chatID, "🏠 منوی اصلی:", MainMenuKeyboard())
 		} else {
 			h.sendMessage(chatID, MsgContactNotShared)
 		}
@@ -292,7 +294,7 @@ func (h *Handlers) handleContact(msg *tgbotapi.Message) {
 		
 		// Send main menu after a short delay
 		time.Sleep(500 * time.Millisecond)
-		h.sendMessageWithKeyboard(chatID, "منوی اصلی:", MainMenuKeyboard())
+		h.sendMessageWithKeyboard(chatID, "🏠 منوی اصلی:", MainMenuKeyboard())
 		return
 	}
 
@@ -379,7 +381,7 @@ func (h *Handlers) handleContact(msg *tgbotapi.Message) {
 	
 	// Send main menu after a short delay
 	time.Sleep(500 * time.Millisecond)
-	h.sendMessageWithKeyboard(chatID, "منوی اصلی:", MainMenuKeyboard())
+	h.sendMessageWithKeyboard(chatID, "🏠 منوی اصلی:", MainMenuKeyboard())
 }
 
 // handlePasswordInput handles password input (for future use)
@@ -647,15 +649,45 @@ func (h *Handlers) HandleCallbackQuery(query *tgbotapi.CallbackQuery) {
 		h.handleStartConversion(query)
 	case data == "my_conversions":
 		h.handleMyConversions(query)
+	case data == "profile":
+		h.handleProfile(query)
+	case data == "gallery":
+		h.handleGallery(query)
+	case data == "statistics":
+		h.handleStatistics(query)
+	case data == "about":
+		h.answerCallback(query.ID, "")
+		h.sendMessageWithKeyboard(chatID, MsgAbout, BackToMenuKeyboard())
 	case data == "help":
 		h.answerCallback(query.ID, "")
-		h.sendMessage(chatID, MsgHelp)
+		h.sendMessageWithKeyboard(chatID, MsgHelp, BackToMenuKeyboard())
 	case data == "settings":
 		h.answerCallback(query.ID, "")
-		h.sendMessage(chatID, MsgSettings)
+		h.sendMessageWithKeyboard(chatID, MsgSettings, SettingsKeyboard())
 	case data == "main_menu":
 		h.answerCallback(query.ID, "")
-		h.sendMessageWithKeyboard(chatID, "منوی اصلی:", MainMenuKeyboard())
+		h.sendMessageWithKeyboard(chatID, "🏠 منوی اصلی:", MainMenuKeyboard())
+	// Profile submenu
+	case data == "profile_stats":
+		h.handleProfileStats(query)
+	case data == "profile_quota":
+		h.handleProfileQuota(query)
+	case data == "profile_edit":
+		h.answerCallback(query.ID, "")
+		h.sendMessage(chatID, "📝 برای ویرایش پروفایل لطفاً از وب‌سایت یا اپلیکیشن استفاده کنید.")
+	// Settings submenu
+	case data == "settings_contact":
+		h.handleSettingsContact(query)
+	case data == "settings_notifications":
+		h.answerCallback(query.ID, "")
+		h.sendMessageWithKeyboard(chatID, MsgSettingsNotifications, BackToMenuKeyboard())
+	case data == "settings_language":
+		h.answerCallback(query.ID, "")
+		h.sendMessageWithKeyboard(chatID, MsgSettingsLanguage, BackToMenuKeyboard())
+	case data == "settings_password":
+		h.answerCallback(query.ID, "")
+		h.sendMessageWithKeyboard(chatID, MsgSettingsPassword, BackToMenuKeyboard())
+	// Conversion actions
 	case strings.HasPrefix(data, "style_"):
 		h.handleStyleSelection(query, strings.TrimPrefix(data, "style_"))
 	case data == "confirm_conversion":
@@ -1042,7 +1074,271 @@ func (h *Handlers) handleCancel(query *tgbotapi.CallbackQuery) {
 
 	h.sessionMgr.ClearState(ctx, userID)
 	h.answerCallback(query.ID, "لغو شد")
-	h.sendMessageWithKeyboard(chatID, "عملیات لغو شد.", MainMenuKeyboard())
+	h.sendMessageWithKeyboard(chatID, "✅ عملیات لغو شد.", MainMenuKeyboard())
+}
+
+// handleProfile handles profile menu
+func (h *Handlers) handleProfile(query *tgbotapi.CallbackQuery) {
+	ctx := context.Background()
+	userID := query.From.ID
+	chatID := query.Message.Chat.ID
+
+	// Check authentication
+	authenticated, err := h.sessionMgr.IsAuthenticated(ctx, userID)
+	if err != nil || !authenticated {
+		h.answerCallback(query.ID, "")
+		h.sendMessage(chatID, MsgErrorUnauthorized+"\n\n"+MsgShareContact)
+		msgConfig := tgbotapi.NewMessage(chatID, "لطفاً کانتکت خودتون رو share کنید:")
+		msgConfig.ReplyMarkup = ShareContactKeyboard()
+		h.bot.Send(msgConfig)
+		h.sessionMgr.SetState(ctx, userID, "waiting_contact", "")
+		return
+	}
+
+	h.answerCallback(query.ID, "")
+	
+	// Get user info from session
+	session, err := h.sessionMgr.GetSession(ctx, userID)
+	if err != nil || session == nil {
+		h.sendMessage(chatID, MsgErrorGeneric)
+		return
+	}
+
+	// Format profile message
+	profileMsg := MsgProfile + "\n\n"
+	profileMsg += "━━━━━━━━━━━━━━━━━━━━\n"
+	if session.FirstName != nil {
+		profileMsg += "👤 نام: " + *session.FirstName
+		if session.LastName != nil {
+			profileMsg += " " + *session.LastName
+		}
+		profileMsg += "\n"
+	}
+	if session.Phone != nil {
+		profileMsg += "📞 شماره تلفن: " + *session.Phone + "\n"
+	}
+	if session.Username != nil && *session.Username != "" {
+		profileMsg += "🔗 یوزرنیم: @" + *session.Username + "\n"
+	}
+	profileMsg += "━━━━━━━━━━━━━━━━━━━━\n"
+
+	h.sendMessageWithKeyboard(chatID, profileMsg, ProfileKeyboard())
+}
+
+// handleProfileStats handles profile statistics
+func (h *Handlers) handleProfileStats(query *tgbotapi.CallbackQuery) {
+	ctx := context.Background()
+	userID := query.From.ID
+	chatID := query.Message.Chat.ID
+
+	// Check authentication
+	authenticated, err := h.sessionMgr.IsAuthenticated(ctx, userID)
+	if err != nil || !authenticated {
+		h.answerCallback(query.ID, "")
+		h.sendMessage(chatID, MsgErrorUnauthorized)
+		return
+	}
+
+	// Get access token
+	accessToken, err := h.sessionMgr.GetAccessToken(ctx, userID)
+	if err != nil || accessToken == "" {
+		h.answerCallback(query.ID, "")
+		h.sendMessage(chatID, MsgErrorUnauthorized)
+		return
+	}
+
+	h.answerCallback(query.ID, "")
+
+	// Get statistics
+	stats, err := h.apiClient.GetStatistics(ctx, accessToken)
+	if err != nil {
+		log.Printf("Failed to get statistics: %v", err)
+		h.sendMessage(chatID, "⚠️ دریافت آمار با خطا مواجه شد.")
+		return
+	}
+
+	// Format statistics message
+	statsMsg := MsgProfileStats + "\n\n"
+	statsMsg += "━━━━━━━━━━━━━━━━━━━━\n"
+	statsMsg += fmt.Sprintf("📊 کل تبدیل‌ها: %d\n", stats.TotalConversions)
+	statsMsg += fmt.Sprintf("✅ موفق: %d\n", stats.Successful)
+	statsMsg += fmt.Sprintf("❌ ناموفق: %d\n", stats.Failed)
+	if stats.TotalConversions > 0 {
+		successRate := float64(stats.Successful) / float64(stats.TotalConversions) * 100
+		statsMsg += fmt.Sprintf("📈 نرخ موفقیت: %.1f%%\n", successRate)
+	}
+	if stats.AverageTime > 0 {
+		statsMsg += fmt.Sprintf("⏱️ زمان متوسط: %.1f ثانیه\n", stats.AverageTime)
+	}
+	statsMsg += "━━━━━━━━━━━━━━━━━━━━\n"
+
+	h.sendMessageWithKeyboard(chatID, statsMsg, ProfileKeyboard())
+}
+
+// handleProfileQuota handles profile quota
+func (h *Handlers) handleProfileQuota(query *tgbotapi.CallbackQuery) {
+	ctx := context.Background()
+	userID := query.From.ID
+	chatID := query.Message.Chat.ID
+
+	// Check authentication
+	authenticated, err := h.sessionMgr.IsAuthenticated(ctx, userID)
+	if err != nil || !authenticated {
+		h.answerCallback(query.ID, "")
+		h.sendMessage(chatID, MsgErrorUnauthorized)
+		return
+	}
+
+	// Get access token
+	accessToken, err := h.sessionMgr.GetAccessToken(ctx, userID)
+	if err != nil || accessToken == "" {
+		h.answerCallback(query.ID, "")
+		h.sendMessage(chatID, MsgErrorUnauthorized)
+		return
+	}
+
+	h.answerCallback(query.ID, "")
+
+	// Get quota status
+	quota, err := h.apiClient.GetQuotaStatus(ctx, accessToken)
+	if err != nil {
+		log.Printf("Failed to get quota: %v", err)
+		h.sendMessage(chatID, "⚠️ دریافت اطلاعات کووتا با خطا مواجه شد.")
+		return
+	}
+
+	// Format quota message
+	quotaMsg := MsgProfileQuota + "\n\n"
+	quotaMsg += "━━━━━━━━━━━━━━━━━━━━\n"
+	if quota.Plan != "" {
+		quotaMsg += "📦 پلن: " + quota.Plan + "\n"
+	}
+	quotaMsg += fmt.Sprintf("📊 استفاده شده: %d از %d\n", quota.Used, quota.Total)
+	quotaMsg += fmt.Sprintf("🔄 باقیمانده: %d\n", quota.Remaining)
+	if quota.Percentage > 0 {
+		quotaMsg += fmt.Sprintf("📈 درصد استفاده: %.1f%%\n", quota.Percentage)
+	}
+	if quota.Exceeded {
+		quotaMsg += "⚠️ کووتا تمام شده است!\n"
+		quotaMsg += "💳 برای ادامه استفاده، پلن خود را ارتقا دهید.\n"
+	}
+	quotaMsg += "━━━━━━━━━━━━━━━━━━━━\n"
+
+	h.sendMessageWithKeyboard(chatID, quotaMsg, ProfileKeyboard())
+}
+
+// handleGallery handles gallery menu
+func (h *Handlers) handleGallery(query *tgbotapi.CallbackQuery) {
+	ctx := context.Background()
+	userID := query.From.ID
+	chatID := query.Message.Chat.ID
+
+	// Check authentication
+	authenticated, err := h.sessionMgr.IsAuthenticated(ctx, userID)
+	if err != nil || !authenticated {
+		h.answerCallback(query.ID, "")
+		h.sendMessage(chatID, MsgErrorUnauthorized+"\n\n"+MsgShareContact)
+		msgConfig := tgbotapi.NewMessage(chatID, "لطفاً کانتکت خودتون رو share کنید:")
+		msgConfig.ReplyMarkup = ShareContactKeyboard()
+		h.bot.Send(msgConfig)
+		h.sessionMgr.SetState(ctx, userID, "waiting_contact", "")
+		return
+	}
+
+	h.answerCallback(query.ID, "")
+	h.sendMessageWithKeyboard(chatID, MsgGallery+"\n\n📝 گالری در حال آماده‌سازی است. به زودی در دسترس خواهد بود.", BackToMenuKeyboard())
+}
+
+// handleStatistics handles statistics menu
+func (h *Handlers) handleStatistics(query *tgbotapi.CallbackQuery) {
+	ctx := context.Background()
+	userID := query.From.ID
+	chatID := query.Message.Chat.ID
+
+	// Check authentication
+	authenticated, err := h.sessionMgr.IsAuthenticated(ctx, userID)
+	if err != nil || !authenticated {
+		h.answerCallback(query.ID, "")
+		h.sendMessage(chatID, MsgErrorUnauthorized+"\n\n"+MsgShareContact)
+		msgConfig := tgbotapi.NewMessage(chatID, "لطفاً کانتکت خودتون رو share کنید:")
+		msgConfig.ReplyMarkup = ShareContactKeyboard()
+		h.bot.Send(msgConfig)
+		h.sessionMgr.SetState(ctx, userID, "waiting_contact", "")
+		return
+	}
+
+	// Get access token
+	accessToken, err := h.sessionMgr.GetAccessToken(ctx, userID)
+	if err != nil || accessToken == "" {
+		h.answerCallback(query.ID, "")
+		h.sendMessage(chatID, MsgErrorUnauthorized)
+		return
+	}
+
+	h.answerCallback(query.ID, "")
+
+	// Get statistics
+	stats, err := h.apiClient.GetStatistics(ctx, accessToken)
+	if err != nil {
+		log.Printf("Failed to get statistics: %v", err)
+		h.sendMessage(chatID, "⚠️ دریافت آمار با خطا مواجه شد.")
+		return
+	}
+
+	// Format statistics message
+	statsMsg := MsgStatistics + "\n\n"
+	statsMsg += "━━━━━━━━━━━━━━━━━━━━\n"
+	statsMsg += fmt.Sprintf("📊 کل تبدیل‌ها: %d\n", stats.TotalConversions)
+	statsMsg += fmt.Sprintf("✅ موفق: %d\n", stats.Successful)
+	statsMsg += fmt.Sprintf("❌ ناموفق: %d\n", stats.Failed)
+	if stats.TotalConversions > 0 {
+		successRate := float64(stats.Successful) / float64(stats.TotalConversions) * 100
+		statsMsg += fmt.Sprintf("📈 نرخ موفقیت: %.1f%%\n", successRate)
+	}
+	if stats.AverageTime > 0 {
+		statsMsg += fmt.Sprintf("⏱️ زمان متوسط: %.1f ثانیه\n", stats.AverageTime)
+	}
+	statsMsg += "━━━━━━━━━━━━━━━━━━━━\n"
+
+	h.sendMessageWithKeyboard(chatID, statsMsg, BackToMenuKeyboard())
+}
+
+// handleSettingsContact handles settings contact
+func (h *Handlers) handleSettingsContact(query *tgbotapi.CallbackQuery) {
+	ctx := context.Background()
+	userID := query.From.ID
+	chatID := query.Message.Chat.ID
+
+	// Check authentication
+	authenticated, err := h.sessionMgr.IsAuthenticated(ctx, userID)
+	if err != nil || !authenticated {
+		h.answerCallback(query.ID, "")
+		h.sendMessage(chatID, MsgErrorUnauthorized)
+		return
+	}
+
+	h.answerCallback(query.ID, "")
+
+	// Get user info from session
+	session, err := h.sessionMgr.GetSession(ctx, userID)
+	if err != nil || session == nil {
+		h.sendMessage(chatID, MsgErrorGeneric)
+		return
+	}
+
+	// Format contact message
+	contactMsg := MsgSettingsContact + "\n\n"
+	contactMsg += "━━━━━━━━━━━━━━━━━━━━\n"
+	if session.Phone != nil {
+		contactMsg += "📞 شماره تلفن: " + *session.Phone + "\n"
+	}
+	if session.Username != nil && *session.Username != "" {
+		contactMsg += "🔗 یوزرنیم: @" + *session.Username + "\n"
+	}
+	contactMsg += "━━━━━━━━━━━━━━━━━━━━\n"
+	contactMsg += "\n💡 برای تغییر اطلاعات تماس، لطفاً از وب‌سایت یا اپلیکیشن استفاده کنید."
+
+	h.sendMessageWithKeyboard(chatID, contactMsg, BackToMenuKeyboard())
 }
 
 // Helper functions

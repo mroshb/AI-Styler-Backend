@@ -11,15 +11,28 @@ import (
 // MainMenuKeyboard returns the main menu inline keyboard
 func MainMenuKeyboard() tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.NewInlineKeyboardMarkup(
+		// First row: Main actions
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData(BtnStartConversion, "start_conversion"),
+			tgbotapi.NewInlineKeyboardButtonData("✨ "+BtnStartConversion, "start_conversion"),
 		),
+		// Second row: History and Profile
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData(BtnMyConversions, "my_conversions"),
+			tgbotapi.NewInlineKeyboardButtonData("📋 "+BtnMyConversions, "my_conversions"),
+			tgbotapi.NewInlineKeyboardButtonData("👤 پروفایل", "profile"),
 		),
+		// Third row: Gallery and Statistics
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData(BtnHelp, "help"),
-			tgbotapi.NewInlineKeyboardButtonData(BtnSettings, "settings"),
+			tgbotapi.NewInlineKeyboardButtonData("🖼️ گالری", "gallery"),
+			tgbotapi.NewInlineKeyboardButtonData("📊 آمار", "statistics"),
+		),
+		// Fourth row: Help and Settings
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("ℹ️ "+BtnHelp, "help"),
+			tgbotapi.NewInlineKeyboardButtonData("⚙️ "+BtnSettings, "settings"),
+		),
+		// Fifth row: About
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("ℹ️ درباره ما", "about"),
 		),
 	)
 }
@@ -137,7 +150,46 @@ func CancelKeyboard() tgbotapi.InlineKeyboardMarkup {
 func BackToMenuKeyboard() tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData(BtnBackToMenu, "main_menu"),
+			tgbotapi.NewInlineKeyboardButtonData("🏠 "+BtnBackToMenu, "main_menu"),
+		),
+	)
+}
+
+// SettingsKeyboard returns keyboard for settings menu
+func SettingsKeyboard() tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("📱 اطلاعات تماس", "settings_contact"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🔔 تنظیمات اعلان", "settings_notifications"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🌐 زبان", "settings_language"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🔒 تغییر رمز عبور", "settings_password"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🏠 "+BtnBackToMenu, "main_menu"),
+		),
+	)
+}
+
+// ProfileKeyboard returns keyboard for profile menu
+func ProfileKeyboard() tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("📊 آمار و اطلاعات", "profile_stats"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("💳 پلن و کووتا", "profile_quota"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("📝 ویرایش پروفایل", "profile_edit"),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🏠 "+BtnBackToMenu, "main_menu"),
 		),
 	)
 }

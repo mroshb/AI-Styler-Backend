@@ -558,3 +558,104 @@ func (c *APIClient) GetImageURL(ctx context.Context, accessToken, imageID string
 
 	return "", fmt.Errorf("no URL found in image response")
 }
+
+// DashboardData represents dashboard data response
+type DashboardData struct {
+	User        interface{} `json:"user,omitempty"`
+	Quota       interface{} `json:"quota,omitempty"`
+	Statistics  interface{} `json:"statistics,omitempty"`
+	Conversions interface{} `json:"conversions,omitempty"`
+	Gallery     interface{} `json:"gallery,omitempty"`
+	Plan        interface{} `json:"plan,omitempty"`
+}
+
+// QuotaStatus represents quota status response
+type QuotaStatus struct {
+	Remaining  int    `json:"remaining,omitempty"`
+	Total      int    `json:"total,omitempty"`
+	Used       int    `json:"used,omitempty"`
+	Percentage float64 `json:"percentage,omitempty"`
+	Exceeded   bool   `json:"exceeded,omitempty"`
+	Plan       string `json:"plan,omitempty"`
+}
+
+// StatisticsData represents statistics response
+type StatisticsData struct {
+	TotalConversions   int     `json:"totalConversions,omitempty"`
+	Successful         int     `json:"successful,omitempty"`
+	Failed             int     `json:"failed,omitempty"`
+	SuccessRate        float64 `json:"successRate,omitempty"`
+	AverageTime        float64 `json:"averageTime,omitempty"`
+}
+
+// GetDashboard gets dashboard data
+func (c *APIClient) GetDashboard(ctx context.Context, accessToken string) (*DashboardData, error) {
+	headers := map[string]string{
+		"Authorization": "Bearer " + accessToken,
+	}
+
+	resp, err := c.doRequest(ctx, "GET", "/api/v1/dashboard", nil, headers)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result DashboardData
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API error: %d", resp.StatusCode)
+	}
+
+	return &result, nil
+}
+
+// GetQuotaStatus gets quota status
+func (c *APIClient) GetQuotaStatus(ctx context.Context, accessToken string) (*QuotaStatus, error) {
+	headers := map[string]string{
+		"Authorization": "Bearer " + accessToken,
+	}
+
+	resp, err := c.doRequest(ctx, "GET", "/api/v1/dashboard/quota", nil, headers)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result QuotaStatus
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API error: %d", resp.StatusCode)
+	}
+
+	return &result, nil
+}
+
+// GetStatistics gets user statistics
+func (c *APIClient) GetStatistics(ctx context.Context, accessToken string) (*StatisticsData, error) {
+	headers := map[string]string{
+		"Authorization": "Bearer " + accessToken,
+	}
+
+	resp, err := c.doRequest(ctx, "GET", "/api/v1/dashboard/statistics", nil, headers)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result StatisticsData
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API error: %d", resp.StatusCode)
+	}
+
+	return &result, nil
+}
